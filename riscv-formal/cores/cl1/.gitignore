@@ -1,0 +1,11 @@
+/cover/
+/complete/
+/honest/
+/checks/
+/testbugs.mk
+/disasm.s
+/disasm.o
+/run_check.sh
+/testbugs.sh
+/Cl1Top.sv
+/Cl1Top_AXI.sv

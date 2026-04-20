@@ -1,0 +1,19 @@
+# Nix
+result
+result-*
+
+# Build artifacts
+CL1_Core/build/
+CL1_Core/out/
+CL1_Core/vsrc/
+CL1_Core/wave/
+CL1_Core/saif/
+
+# riscv-formal generated checks
+riscv-formal/cores/*/checks/
+
+# Editor
+.idea/
+*.swp
+*~
+.vscode/
