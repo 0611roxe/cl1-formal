@@ -92,8 +92,15 @@
             export OBJCACHE=ccache
             echo "============================================"
             echo "  cl1-formal unified dev environment"
-            echo "  CL1_Core:     cd CL1_Core && make verilog"
-            echo "  riscv-formal: cd riscv-formal && make check"
+            echo ""
+            echo "  CL1_Core:"
+            echo "    cd CL1_Core && make verilog"
+            echo ""
+            echo "  riscv-formal (in cores/cl1/):"
+            echo "    cp ./CL1_Core/vsrc/Cl1Top.sv ./riscv-formal/cores/cl1/CL1Top.sv"
+            echo "    cd riscv-formal/cores/cl1"
+            echo "    python3 ../../checks/genchecks.py"
+            echo "    make -C checks -j$(nproc)"
             echo "============================================"
           '';
         };
