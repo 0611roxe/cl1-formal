@@ -113,7 +113,7 @@ if(FORMAL_VERIF && WB_PIPESTAGE) { withReset(rst1) {
   val wb_cmt    = BoringUtils.bore(core.wbStage.wb_commit)
   val wb_diff_cmt = BoringUtils.bore(core.wbStage.diff_commit)
   val trap      = BoringUtils.bore(core.excp.excp_take_en)
-  
+
   // Retire through RVFI when the instruction either commits normally, or
   // takes an M-mode trap (ECALL, or EBREAK with dcsr.ebreakm==0).
   val rvfi_valid = wb_diff_cmt || trap
@@ -172,9 +172,9 @@ if(FORMAL_VERIF && WB_PIPESTAGE) { withReset(rst1) {
   rvfi_port.rvfi_trap      := false.B   //no illegal instruction or misaligned fetch / load / store now
   rvfi_port.rvfi_halt      := false.B
 
-  val trap_taken = BoringUtils.bore(core.excp.trap_take_en)
+  val intr_taken = BoringUtils.bore(core.excp.irq_take_en)
   val intr_pending = RegInit(false.B)
-  when (trap_taken) {
+  when (intr_taken) {
     intr_pending := true.B
   } .elsewhen (rvfi_valid) {
     intr_pending := false.B

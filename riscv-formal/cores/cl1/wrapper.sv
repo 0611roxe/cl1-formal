@@ -255,6 +255,11 @@ module rvfi_wrapper (
 		assume (uut.core.csr.ebreakm == 1'b0);
 		assume (uut.core.dm.dbg_mode_r == 1'b0);
 		assume (uut.core.dm.step_req_r == 1'b0);
+`ifndef RISCV_FORMAL_INTERRUPT
+		// Default (no-interrupt) environment for the CSR / priv_insn /
+		// trap_handler checks. The interrupt check defines
+		// RISCV_FORMAL_INTERRUPT to let the solver drive the irq lines
+		// and pick an arbitrary initial mstatus.MIE.
 		assume (ext_irq == 1'b0);
 		assume (sft_irq == 1'b0);
 		assume (tmr_irq == 1'b0);
@@ -262,6 +267,11 @@ module rvfi_wrapper (
 			assume (uut.core.csr.mstatus_mie == 1'b0);
 			assume (uut.intr_pending == 1'b0);
 		end
+`else
+		if (reset) begin
+			assume (uut.intr_pending == 1'b0);
+		end
+`endif
 	end
 
 endmodule

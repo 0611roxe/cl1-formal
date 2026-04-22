@@ -33,10 +33,12 @@ make checks        # 等价于 python3 ../../checks/genchecks.py
 # 6. 运行验证
 make all           # 跑全部 check（可用 JOBS=N 覆盖并发度）
 make csr           # 仅跑 CSR / trap / 特权指令相关 check
+make int           # 仅跑中断 check（interrupt_ch0）
 
 # 7. 查看结果汇总
 make summary       # 所有 check
 make summary-csr   # 仅 CSR / trap / 特权指令
+make summary-int   # 仅中断 check
 
 # 8. 清理
 make clean         # 删除生成的 checks/
@@ -49,6 +51,22 @@ make clean         # 删除生成的 checks/
 | 异常 / 特权指令 | `trap_handler_ch0` / `priv_insn_ch0` |
 | CSR 写 (`csrw_*`) | `mtvec` / `mepc` / `mcause` / `mscratch` / `mstatus` / `mie` / `misa` |
 | CSR 杂散写保护 (`csrc_*`) | `any_mepc` / `any_mstatus` / `any_mie` / `const_misa` |
+
+### `make int` 覆盖的检查
+
+
+
+| 断言 | 含义 |
+|---|---|
+| A1 | `mcause.interrupt == 1`（异步中断标志位） |
+| A2 | `mcause.code ∈ {3, 7, 11}`（MSI / MTI / MEI，M-mode 合法异步原因） |
+| A3 | `mstatus.MPIE == 1`（进入 handler 前 MIE 被保存为 1；异步中断只会在 MIE=1 时被接受） |
+| A4 | `mstatus.MIE  == 0`（进入 handler 时全局中断被屏蔽） |
+| A5 | `mepc` 4 字节对齐 |
+| A6 | `pc_rdata` 4 字节对齐（handler 第一条指令的地址） |
+
+同时包含 3 条 `cover` 目标，分别产生原因为 3 / 7 / 11 的中断入口 witness trace。
+
 
 ## 总线模式选择
 
@@ -72,7 +90,7 @@ cl1-formal/
     └── cores/cl1/         # CL1 核验证配置
         ├── checks.cfg     # 验证参数配置
         ├── wrapper.sv     # RVFI wrapper
-        ├── Makefile       # checks / all / csr / summary 等便捷目标
+        ├── Makefile       # checks / all / csr / int / summary
         ├── summary.sh     # 汇总 SBY 运行结果
         └── checks/        # 生成的验证任务（make checks 后）
 ```

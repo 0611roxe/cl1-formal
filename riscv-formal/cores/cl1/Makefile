@@ -17,7 +17,7 @@ CSR_TARGETS := \
 
 SUMMARY := ./summary.sh
 
-.PHONY: checks all csr summary summary-csr clean
+.PHONY: checks all csr int summary summary-csr summary-int clean
 
 checks checks/makefile:
 	python3 ../../checks/genchecks.py
@@ -28,11 +28,19 @@ all: checks/makefile
 csr: checks/makefile
 	$(MAKE) -C checks -j$(JOBS) $(CSR_TARGETS)
 
+INT_TARGETS := interrupt_ch0
+
+int: checks/makefile
+	$(MAKE) -C checks -j$(JOBS) $(INT_TARGETS)
+
 summary:
 	@$(SUMMARY)
 
 summary-csr:
 	@$(SUMMARY) 'priv|trap|csr'
+
+summary-int:
+	@$(SUMMARY) '^interrupt'
 
 clean:
 	rm -rf checks/
