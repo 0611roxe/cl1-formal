@@ -272,6 +272,21 @@ module rvfi_wrapper (
 			assume (uut.intr_pending == 1'b0);
 		end
 `endif
+`ifdef RISCV_FORMAL_DEADLOCK_ENV
+		// The following assumptions ensure that when the environment quiesces, 
+		// the core can still retire instructions that are not interrupts (i.e.,
+		// with rvfi_intr=0), so that the deadlock check can observe a valid RVFI
+		// trace up to the point of deadlock.		
+`ifdef CL1_USE_NATIVE_BUS
+		assume (ibus_rsp_bits_data == 32'h00000013);
+		assume (ibus_rsp_bits_err  == 1'b0);
+		assume (dbus_rsp_bits_err  == 1'b0);
+`else
+		assume (r_data == 32'h00000013);
+		assume (r_resp == 2'b00);
+		assume (b_resp == 2'b00);
+`endif
+`endif
 	end
 
 endmodule

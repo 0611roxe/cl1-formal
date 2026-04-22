@@ -17,7 +17,9 @@ CSR_TARGETS := \
 
 SUMMARY := ./summary.sh
 
-.PHONY: checks all csr int summary summary-csr summary-int clean
+DEADLOCK_TARGETS := hang liveness_ch0
+
+.PHONY: checks all csr int deadlock summary summary-csr summary-int summary-deadlock clean
 
 checks checks/makefile:
 	python3 ../../checks/genchecks.py
@@ -33,11 +35,17 @@ INT_TARGETS := interrupt_ch0
 int: checks/makefile
 	$(MAKE) -C checks -j$(JOBS) $(INT_TARGETS)
 
+deadlock: checks/makefile
+	$(MAKE) -C checks -j$(JOBS) $(DEADLOCK_TARGETS)
+
 summary:
 	@$(SUMMARY)
 
 summary-csr:
 	@$(SUMMARY) 'priv|trap|csr'
+
+summary-deadlock:
+	@$(SUMMARY) '^(hang|liveness)'
 
 summary-int:
 	@$(SUMMARY) '^interrupt'

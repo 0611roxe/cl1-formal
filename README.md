@@ -32,13 +32,10 @@ make checks        # 等价于 python3 ../../checks/genchecks.py
 
 # 6. 运行验证
 make all           # 跑全部 check（可用 JOBS=N 覆盖并发度）
-make csr           # 仅跑 CSR / trap / 特权指令相关 check
-make int           # 仅跑中断 check（interrupt_ch0）
+make csr           # 运行特定检验
 
 # 7. 查看结果汇总
-make summary       # 所有 check
-make summary-csr   # 仅 CSR / trap / 特权指令
-make summary-int   # 仅中断 check
+make summary       
 
 # 8. 清理
 make clean         # 删除生成的 checks/
@@ -66,6 +63,21 @@ make clean         # 删除生成的 checks/
 | A6 | `pc_rdata` 4 字节对齐（handler 第一条指令的地址） |
 
 同时包含 3 条 `cover` 目标，分别产生原因为 3 / 7 / 11 的中断入口 witness trace。
+
+
+### 死锁检查与公平性假设
+
+`make deadlock` 会运行 `hang` 和 `liveness_ch0` 两条死锁/活性检查。
+
+**注意：** 为避免 solver 构造“连续非法指令/总线错误/异常 storm”假死锁，
+本项目采用业界通用的 NOP-stream 公平性假设：
+
+- 仅在 hang/liveness 检查时，强制 bus 只返回合法 NOP 指令（`addi x0, x0, 0`），且 bus error 信号钉 0。
+- 这样能证明“在无异常输入下，核内部 FSM 必然前进”，即无内部死锁。
+- 这比 PicoRV32/NERV 等核的 stall-fairness 更强，但适合 CL1 这种无全局 stall、bus 直接暴露的结构。
+- 其它 check（CSR/trap/interrupt）不受影响。
+
+如需更强活性覆盖，可进一步弱化假设，但会显著增加假反例和复杂度。
 
 
 ## 总线模式选择
