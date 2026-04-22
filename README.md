@@ -24,13 +24,31 @@ make verilog
 # 3. 复制生成的 Cl1Top.sv 到验证目录
 cp vsrc/Cl1Top.sv ../riscv-formal/cores/cl1/
 
-# 4. 生成形式化验证检查
+# 4. 进入验证目录
 cd ../riscv-formal/cores/cl1
-python3 ../../checks/genchecks.py
 
-# 5. 运行验证
-make -C checks -j$(nproc)
+# 5. 生成形式化验证检查
+make checks        # 等价于 python3 ../../checks/genchecks.py
+
+# 6. 运行验证
+make all           # 跑全部 check（可用 JOBS=N 覆盖并发度）
+make csr           # 仅跑 CSR / trap / 特权指令相关 check
+
+# 7. 查看结果汇总
+make summary       # 所有 check
+make summary-csr   # 仅 CSR / trap / 特权指令
+
+# 8. 清理
+make clean         # 删除生成的 checks/
 ```
+
+### `make csr` 覆盖的检查
+
+| 类别 | Target |
+|---|---|
+| 异常 / 特权指令 | `trap_handler_ch0` / `priv_insn_ch0` |
+| CSR 写 (`csrw_*`) | `mtvec` / `mepc` / `mcause` / `mscratch` / `mstatus` / `mie` / `misa` |
+| CSR 杂散写保护 (`csrc_*`) | `any_mepc` / `any_mstatus` / `any_mie` / `const_misa` |
 
 ## 总线模式选择
 
@@ -54,5 +72,7 @@ cl1-formal/
     └── cores/cl1/         # CL1 核验证配置
         ├── checks.cfg     # 验证参数配置
         ├── wrapper.sv     # RVFI wrapper
-        └── checks/        # 生成的验证任务（genchecks.py 后）
+        ├── Makefile       # checks / all / csr / summary 等便捷目标
+        ├── summary.sh     # 汇总 SBY 运行结果
+        └── checks/        # 生成的验证任务（make checks 后）
 ```
