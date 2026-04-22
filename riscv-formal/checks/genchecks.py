@@ -819,6 +819,8 @@ for grp in groups:
         check_cons(grp, "causal_io", chanidx=i, start=0, depth=1)
         check_cons(grp, "ill", chanidx=i, depth=0)
         check_cons(grp, "fault", chanidx=i, depth=0)
+        check_cons(grp, "trap_handler", chanidx=i, depth=0)
+        check_cons(grp, "priv_insn", chanidx=i, depth=0)
 
         check_cons(grp, "bus_imem", chanidx=i, start=0, depth=1, bus_mode=True)
         check_cons(grp, "bus_imem_fault", chanidx=i, start=0, depth=1, bus_mode=True)

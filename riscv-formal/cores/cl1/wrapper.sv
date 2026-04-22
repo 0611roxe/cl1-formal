@@ -4,6 +4,10 @@ module rvfi_wrapper (
 	`RVFI_OUTPUTS
 );
 
+	(* keep *) `rvformal_rand_reg ext_irq;
+	(* keep *) `rvformal_rand_reg sft_irq;
+	(* keep *) `rvformal_rand_reg tmr_irq;
+
 `ifdef CL1_USE_NATIVE_BUS
 	// ---- Native bus interface (Cl1Top) ----
 
@@ -62,10 +66,10 @@ module rvfi_wrapper (
 		.clock                      (clock              ),
 		.reset                      (!reset             ),
 
-		// Tie off interrupts and debug
-		.io_ext_irq                 (1'b0               ),
-		.io_sft_irq                 (1'b0               ),
-		.io_tmr_irq                 (1'b0               ),
+		// Randomized interrupts, debug tied off
+		.io_ext_irq                 (ext_irq            ),
+		.io_sft_irq                 (sft_irq            ),
+		.io_tmr_irq                 (tmr_irq            ),
 		.io_dbg_req_i               (1'b0               ),
 
 		// ibus
@@ -190,10 +194,10 @@ module rvfi_wrapper (
 		.clock                      (clock   ),
 		.reset                      (!reset  ),
 
-		// Tie off interrupts and debug
-		.io_ext_irq                 (1'b0    ),
-		.io_sft_irq                 (1'b0    ),
-		.io_tmr_irq                 (1'b0    ),
+		// Randomized interrupts, debug tied off
+		.io_ext_irq                 (ext_irq ),
+		.io_sft_irq                 (sft_irq ),
+		.io_tmr_irq                 (tmr_irq ),
 		.io_dbg_req_i               (1'b0    ),
 
 		// AXI4 AR
@@ -246,6 +250,19 @@ module rvfi_wrapper (
 	);
 
 `endif
+
+	always @* begin
+		assume (uut.core.csr.ebreakm == 1'b0);
+		assume (uut.core.dm.dbg_mode_r == 1'b0);
+		assume (uut.core.dm.step_req_r == 1'b0);
+		assume (ext_irq == 1'b0);
+		assume (sft_irq == 1'b0);
+		assume (tmr_irq == 1'b0);
+		if (reset) begin
+			assume (uut.core.csr.mstatus_mie == 1'b0);
+			assume (uut.intr_pending == 1'b0);
+		end
+	end
 
 endmodule
 
