@@ -252,9 +252,11 @@ module rvfi_wrapper (
 `endif
 
 	always @* begin
-		assume (uut.core.csr.ebreakm == 1'b0);
-		assume (uut.core.dm.dbg_mode_r == 1'b0);
-		assume (uut.core.dm.step_req_r == 1'b0);
+		// Debug Mode is disabled for formal runs via
+		// `chisel3.assume(!dbg_flush)` in Cl1Top.scala (on the internal
+		// signal `core.dm.io.dbg_flush`). That single assume implies
+		// dbg_mode_r=0, step_req_r=0, ebreakm=0 for every reachable cycle,
+		// so no additional debug-related wrapper-side assumes are needed.
 `ifndef RISCV_FORMAL_INTERRUPT
 		// Default (no-interrupt) environment for the CSR / priv_insn /
 		// trap_handler checks. The interrupt check defines
