@@ -173,13 +173,35 @@ if(FORMAL_VERIF && WB_PIPESTAGE) { withReset(rst1) {
   rvfi_port.rvfi_halt      := false.B
 
   val intr_taken = BoringUtils.bore(core.excp.irq_take_en)
+  val excp_flush_pc   = BoringUtils.bore(core.excp.flush_pc)
+  val excp_flush_ofst = BoringUtils.bore(core.excp.flush_ofst)
+  val mret_taken      = BoringUtils.bore(core.excp.cmt_mret_en)
+  val trap_target_pc  = excp_flush_pc + excp_flush_ofst
+
+  // Debug-mode redirects (ebreak/haltreq/step entry, dret exit). PC is flushed
+  // to the debug entry address or dpc in these cases; the first retire after
+  // such a redirect must be reported as rvfi_intr=1 so that pc_fwd / pc_bwd /
+  // liveness checks accept the non-sequential PC.
+  val dbg_take_en = BoringUtils.bore(core.dm.dbg_take_en)
+  val dbg_exit_en = BoringUtils.bore(core.dm.dbg_exit_en)
+
   val intr_pending = RegInit(false.B)
-  when (intr_taken) {
+  when (intr_taken || trap || mret_taken || dbg_take_en || dbg_exit_en) {
     intr_pending := true.B
   } .elsewhen (rvfi_valid) {
     intr_pending := false.B
   }
-  rvfi_port.rvfi_intr      := intr_pending && rvfi_valid
+
+  val last_pc_wdata       = RegInit(0.U(32.W))
+  val last_pc_wdata_valid = RegInit(false.B)
+  when (rvfi_valid) {
+    last_pc_wdata       := Mux(trap || mret_taken, trap_target_pc,
+                               Mux(dx_valid, dx_pc, f2_pc))
+    last_pc_wdata_valid := true.B
+  }
+  val pc_redirected = last_pc_wdata_valid && (wb_pc =/= last_pc_wdata)
+
+  rvfi_port.rvfi_intr      := (intr_pending || pc_redirected) && rvfi_valid
   rvfi_port.rvfi_mode      := "b11".U(2.W)
   rvfi_port.rvfi_ixl       := "b01".U(2.W)
 
@@ -190,11 +212,6 @@ if(FORMAL_VERIF && WB_PIPESTAGE) { withReset(rst1) {
   rvfi_port.rvfi_rd_addr   := Mux(wb_rd_wen, wb_rd_addr, 0.U)
   rvfi_port.rvfi_rd_wdata  := Mux(wb_rd_wen, wb_rd_wdata, 0.U)
   rvfi_port.rvfi_pc_rdata  := wb_pc
-
-  val excp_flush_pc   = BoringUtils.bore(core.excp.flush_pc)
-  val excp_flush_ofst = BoringUtils.bore(core.excp.flush_ofst)
-  val mret_taken      = BoringUtils.bore(core.excp.cmt_mret_en)
-  val trap_target_pc  = excp_flush_pc + excp_flush_ofst
   rvfi_port.rvfi_pc_wdata  := Mux(trap || mret_taken, trap_target_pc,
                                   Mux(dx_valid, dx_pc, f2_pc))
 
