@@ -17,3 +17,4 @@ riscv-formal/cores/*/checks/
 *.swp
 *~
 .vscode/
+run.sh
