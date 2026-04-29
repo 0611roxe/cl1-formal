@@ -38,7 +38,7 @@ SUMMARY := ./summary.sh
 
 DEADLOCK_TARGETS := hang liveness_ch0
 
-.PHONY: checks all i m c base cover sanity csr int deadlock summary summary-csr summary-int summary-deadlock clean
+.PHONY: checks all i m c base cover sanity csr int deadlock summary summary-csr summary-int summary-deadlock clean clean-i clean-m clean-c clean-base clean-cover clean-sanity clean-csr clean-int clean-deadlock
 
 checks checks/makefile:
 	python3 ../../checks/genchecks.py
@@ -89,3 +89,21 @@ summary-int:
 
 clean:
 	rm -rf checks/
+
+clean-i:        ; cd checks 2>/dev/null && rm -rf $(I_TARGETS) || true
+clean-m:        ; cd checks 2>/dev/null && rm -rf $(M_TARGETS) || true
+clean-c:        ; cd checks 2>/dev/null && rm -rf $(C_TARGETS) || true
+clean-base:     ; cd checks 2>/dev/null && rm -rf $(BASE_TARGETS) || true
+clean-cover:    ; cd checks 2>/dev/null && rm -rf $(COVER_TARGETS) || true
+clean-sanity:   ; cd checks 2>/dev/null && rm -rf $(SANITY_TARGETS) || true
+clean-csr:      ; cd checks 2>/dev/null && rm -rf $(CSR_TARGETS) || true
+clean-int:      ; cd checks 2>/dev/null && rm -rf $(INT_TARGETS) || true
+clean-deadlock: ; cd checks 2>/dev/null && rm -rf $(DEADLOCK_TARGETS) || true
+
+clean-%:
+	rm -rf checks/$*
+
+Makefile: ;
+
+%: checks/makefile
+	$(MAKE) -C checks -j$(JOBS) $@
