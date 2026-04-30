@@ -36,9 +36,13 @@ SANITY_TARGETS := $(BASE_TARGETS) $(COVER_TARGETS)
 
 SUMMARY := ./summary.sh
 
+empty :=
+space := $(empty) $(empty)
+SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
+
 DEADLOCK_TARGETS := hang liveness_ch0
 
-.PHONY: checks all i m c base cover sanity csr int deadlock summary summary-csr summary-int summary-deadlock clean clean-i clean-m clean-c clean-base clean-cover clean-sanity clean-csr clean-int clean-deadlock
+.PHONY: checks all i m c base cover sanity csr int deadlock summary summary-i summary-m summary-c summary-base summary-cover summary-sanity summary-csr summary-int summary-deadlock clean clean-i clean-m clean-c clean-base clean-cover clean-sanity clean-csr clean-int clean-deadlock
 
 checks checks/makefile:
 	python3 ../../checks/genchecks.py
@@ -78,14 +82,32 @@ deadlock: checks/makefile
 summary:
 	@$(SUMMARY)
 
+summary-i:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(I_TARGETS))
+
+summary-m:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(M_TARGETS))
+
+summary-c:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(C_TARGETS))
+
+summary-base:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(BASE_TARGETS))
+
+summary-cover:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(COVER_TARGETS))
+
+summary-sanity:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(SANITY_TARGETS))
+
 summary-csr:
-	@$(SUMMARY) 'priv|trap|csr'
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(CSR_TARGETS))
 
 summary-deadlock:
-	@$(SUMMARY) '^(hang|liveness)'
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(DEADLOCK_TARGETS))
 
 summary-int:
-	@$(SUMMARY) '^interrupt'
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(INT_TARGETS))
 
 clean:
 	rm -rf checks/
