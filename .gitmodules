@@ -1,4 +1,4 @@
 [submodule "CL1_Core"]
 	path = CL1_Core
 	url = git@github.com:0611roxe/CL1_Core.git
-	branch = csr
+	branch = dev

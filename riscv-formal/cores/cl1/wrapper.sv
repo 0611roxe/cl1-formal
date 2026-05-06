@@ -310,9 +310,13 @@ module native_bus_dummy_slave (
 
 	reg [1:0] rsp_pending = 0;
 
+	localparam [2:0] RSP_DELAY_MAX = 3'd4;
 	`rvformal_rand_reg [31:0] rsp_data_nd;
-	// `rvformal_rand_reg rsp_delay;
-	wire rsp_delay = 0;
+	`rvformal_rand_reg rsp_delay_nd;
+	//wire rsp_delay = 0;
+
+	reg [2:0] rsp_delay_cnt = 0;
+	wire rsp_delay = rsp_delay_nd && (rsp_delay_cnt < RSP_DELAY_MAX);
 
 	wire req_fire = req_valid && req_ready;
 	wire rsp_fire = rsp_valid && rsp_ready;
@@ -324,13 +328,18 @@ module native_bus_dummy_slave (
 
 	always @(posedge clock) begin
 		if (reset) begin
-			rsp_pending <= 0;
+			rsp_pending   <= 0;
+			rsp_delay_cnt <= 0;
 		end else begin
 			case ({req_fire, rsp_fire})
 				2'b10: rsp_pending <= rsp_pending + 1'b1;
 				2'b01: rsp_pending <= rsp_pending - 1'b1;
 				default: rsp_pending <= rsp_pending;
 			endcase
+			if (rsp_delay)
+				rsp_delay_cnt <= rsp_delay_cnt + 1'b1;
+			else
+				rsp_delay_cnt <= 0;
 		end
 	end
 endmodule
@@ -378,6 +387,8 @@ module axi4_dummy_slave (
 	output [3:0]  b_id
 );
 
+	localparam [2:0] AXI_DELAY_MAX = 3'd4;
+
 	// ---- Read channel state machine ----
 	reg        rd_busy = 0;
 	reg [3:0]  rd_id;
@@ -385,11 +396,14 @@ module axi4_dummy_slave (
 	reg [7:0]  rd_cnt;
 
 	`rvformal_rand_reg [31:0] rd_data_nd;
+	`rvformal_rand_reg rd_delay_nd;
+	reg [2:0] rd_delay_cnt = 0;
+	wire rd_delay = rd_delay_nd && (rd_delay_cnt < AXI_DELAY_MAX);
 
 	wire rd_last = (rd_cnt == rd_len);
 
 	assign ar_ready = !rd_busy && !reset;
-	assign r_valid  = rd_busy && !reset;
+	assign r_valid  = rd_busy && !reset && !rd_delay;
 	assign r_data   = rd_data_nd;
 	assign r_resp   = 2'b00;  // OKAY
 	assign r_last   = rd_last;
@@ -397,7 +411,8 @@ module axi4_dummy_slave (
 
 	always @(posedge clock) begin
 		if (reset) begin
-			rd_busy <= 0;
+			rd_busy      <= 0;
+			rd_delay_cnt <= 0;
 		end else begin
 			// Accept new read request
 			if (ar_ready && ar_valid) begin
@@ -414,6 +429,11 @@ module axi4_dummy_slave (
 				else
 					rd_cnt <= rd_cnt + 1;
 			end
+
+			if (rd_delay)
+				rd_delay_cnt <= rd_delay_cnt + 1'b1;
+			else
+				rd_delay_cnt <= 0;
 		end
 	end
 
@@ -423,7 +443,9 @@ module axi4_dummy_slave (
 	reg [3:0]  wr_id;
 	reg        wr_resp_pending = 0;
 
-	`rvformal_rand_reg wr_delay;
+	`rvformal_rand_reg wr_delay_nd;
+	reg [2:0] wr_delay_cnt = 0;
+	wire wr_delay = wr_delay_nd && (wr_delay_cnt < AXI_DELAY_MAX);
 
 	assign aw_ready = !wr_addr_busy && !wr_resp_pending && !reset;
 	assign w_ready  = wr_addr_busy && !reset;
@@ -433,9 +455,10 @@ module axi4_dummy_slave (
 
 	always @(posedge clock) begin
 		if (reset) begin
-			wr_addr_busy   <= 0;
-			wr_data_done   <= 0;
+			wr_addr_busy    <= 0;
+			wr_data_done    <= 0;
 			wr_resp_pending <= 0;
+			wr_delay_cnt    <= 0;
 		end else begin
 			// Accept write address
 			if (aw_ready && aw_valid) begin
@@ -453,6 +476,11 @@ module axi4_dummy_slave (
 			if (b_valid && b_ready) begin
 				wr_resp_pending <= 0;
 			end
+
+			if (wr_delay)
+				wr_delay_cnt <= wr_delay_cnt + 1'b1;
+			else
+				wr_delay_cnt <= 0;
 		end
 	end
 endmodule
