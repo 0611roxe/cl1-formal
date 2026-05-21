@@ -2,15 +2,20 @@
 
 CL1 RISC-V 处理器核的形式化验证项目，集成 [CL1_Core](CL1_Core/)（Chisel 处理器，作为 submodule 维护在 `csr` 分支）和 [riscv-formal](riscv-formal/)（RISC-V 形式化验证框架）。
 
-当前版本是第一个稳定验证版本：CL1 内核（RV32IMC + Zicsr，单 hart，机器模式）已经接入 riscv-formal，并完成 **91 / 91 PASS，0 FAIL，0 UNKNOWN**。
+当前版本支持两条 formal 验证路径：默认 **native CoreBus** 路径完成 **91 / 91 PASS**；新增 **AXI + ICache/DCache** 路径完成 **98 / 98 PASS**。AXI 路径在保留原 RVFI ISA/CSR/interrupt 检查的基础上，额外启用 RVFI_BUS checker，验证外部 AXI 事务和 architectural memory 行为的一致性。
 
 ## 1. 验证配置
 
-- **DUT 顶层**：`Cl1Top`（native bus 模式，`CL1_USE_NATIVE_BUS`）
-- **求解器**：Yosys -> boolector（默认 SMT BMC）
-- **BMC 深度**：指令检查 35；reg 25；pc_fwd/pc_bwd 30；unique/causal 30；csrw 20；trap_handler/priv_insn/interrupt 20；csrc 5；cover 45；hang 20；liveness 30
-- **M 扩展策略**：ALTOPS 占位（不验证真实乘除算法，只验证 MDU 控制路径 + 结果回写时序）
-- **结果**：**91 / 91 PASS，0 FAIL，0 UNKNOWN**（JOBS=8 约 1.2 h）
+| 模式 | DUT 顶层 | 配置文件 | 总线观测 | 结果 |
+|---|---|---|---|---|
+| Native CoreBus（默认） | `Cl1Top` | `checks.cfg` | 只验证 RVFI architectural 行为，不启用 bus checker | **91 / 91 PASS** |
+| AXI + Cache | `Cl1Top_AXI` | `checks_axi.cfg` | `nbus 2`，AXI write -> RVFI_BUS ch0，AXI read -> RVFI_BUS ch1 | **98 / 98 PASS** |
+
+- **ISA/特权配置**：RV32IMC + Zicsr，单 hart，机器模式。
+- **求解器**：Yosys -> boolector（默认 SMT BMC）。
+- **M 扩展策略**：ALTOPS 占位（不验证真实乘除算法，只验证 MDU 控制路径 + 结果回写时序）。
+- **AXI baseline**：启用 ICache/DCache，经 `CacheBus2Axi4` 转 AXI；dummy slave 返回 OKAY；`CL1_AXI_FAST_FORMAL_MEM` 使用 0 wait-state 降低 BMC 深度压力。
+- **AXI checker 数量**：98 = native-equivalent 91 + 7 个 RVFI_BUS checker。
 
 ## 2. 环境准备
 
@@ -33,6 +38,8 @@ git submodule update --init --recursive
 
 ## 4. 快速开始
 
+### 4.1 Native CoreBus 路径
+
 ```bash
 # 1. 进入开发环境（首次会下载依赖，耗时较长）
 cd cl1-formal
@@ -40,7 +47,7 @@ nix develop
 
 # 2. 生成 Verilog
 cd CL1_Core
-make verilog
+make verilog-native
 
 # 3. 复制生成的 Cl1Top.sv 到验证目录
 cp vsrc/Cl1Top.sv ../riscv-formal/cores/cl1/
@@ -56,6 +63,33 @@ make all JOBS=8
 
 # 7. 查看结果汇总
 make summary
+```
+
+### 4.2 AXI + Cache 路径
+
+```bash
+# 1. 进入开发环境
+cd cl1-formal
+nix develop
+
+# 2. 生成 AXI + ICache/DCache 顶层
+cd CL1_Core
+make verilog-axi-cache
+
+# 3. 复制生成的 Cl1Top_AXI.sv 到验证目录
+cp vsrc/Cl1Top_AXI.sv ../riscv-formal/cores/cl1/
+
+# 4. 进入验证目录
+cd ../riscv-formal/cores/cl1
+
+# 5. 生成 AXI formal 检查
+make CHECKS_CFG=checks_axi checks
+
+# 6. 运行 AXI 全量验证
+make CHECKS_CFG=checks_axi all JOBS=8
+
+# 7. 查看 AXI 汇总
+make axi-summary
 ```
 
 常用子集：
@@ -79,12 +113,29 @@ make summary-sanity     # 只汇总 base + cover
 make summary-csr        # 只汇总 CSR / priv / trap
 make summary-int        # 只汇总 interrupt
 make summary-deadlock   # 只汇总 hang + liveness
+make CHECKS_CFG=checks_axi bus          # AXI 配置下运行 RVFI_BUS checker
+make CHECKS_CFG=checks_axi summary-bus  # AXI 配置下汇总 RVFI_BUS checker
 make clean-csr          # 清 CSR 组工作目录后再跑 make csr
 make clean              # 删除生成的 checks/
 ```
 
+AXI 快捷目标：
+
+```bash
+make axi-checks         # 生成 checks_axi/
+make axi-all            # 运行 AXI 全量验证
+make axi-base
+make axi-cover
+make axi-deadlock
+make axi-csr
+make axi-int
+make axi-bus
+make axi-summary
+```
+
 ## 5. 测试情况总结
 
+### 5.1 Native CoreBus
 
 测试命令：
 
@@ -112,6 +163,35 @@ Total: 91   PASS: 91   FAIL: 0   UNKNOWN: 0   (never ran): 0
 ```
 
 这个结果覆盖 base / sanity / deadlock / interrupt / CSR / RV32I / RV32M(ALTOPS) / RV32C 全部目标。
+
+### 5.2 AXI + Cache
+
+测试命令：
+
+```bash
+cd riscv-formal/cores/cl1
+make CHECKS_CFG=checks_axi checks
+make CHECKS_CFG=checks_axi all JOBS=8
+make axi-summary
+```
+
+`make axi-summary` 结果：
+
+```text
+Total: 98 PASS: 98 FAIL: 0 UNKNOWN: 0 (never ran): 0
+```
+
+AXI 路径覆盖 native-equivalent 的 ISA / CSR / interrupt / cover / deadlock / RV32I / RV32M(ALTOPS) / RV32C 检查，并额外覆盖 7 个 RVFI_BUS checker：
+
+```text
+causal_mem_ch0
+causal_io_ch0
+bus_imem_ch0
+bus_dmem_ch0
+bus_dmem_io_read_ch0
+bus_dmem_io_write_ch0
+bus_dmem_io_order_ch0
+```
 
 ## 6. 检查项总表
 
@@ -144,15 +224,18 @@ riscv-formal 把“通道”（channel，即一条已 retire 指令的 RVFI 快�
 | **i** | `make i` | 37 | `insn_<x>_ch0`，`<x>` 属于 isa_rv32i.txt | 每条 RV32I 指令：操作数读取、ALU 结果、PC 更新、内存访问 mask/addr/wdata 与参考模型一致 |
 | **m** | `make m` | 8 | `insn_{mul,mulh,mulhsu,mulhu,div,divu,rem,remu}_ch0` | 同上，但参考模型用 ALTOPS（每条指令一组 32 位 bitmask，与 riscv-formal/insns/insn_*.v 完全一致） |
 | **c** | `make c` | 25 | `insn_c_<x>_ch0` | 每条 RV32C 压缩指令：解压、寄存器选择、立即数符号扩展、SP/RAS 行为 |
-| **summary** | `make summary` | 91 | 全部 | 汇总并按 PASS/FAIL/UNKNOWN 统计 |
+| **bus** | `make CHECKS_CFG=checks_axi bus` / `make axi-bus` | 7 | `causal_mem_ch0`、`causal_io_ch0`、`bus_imem_ch0`、`bus_dmem_ch0`、`bus_dmem_io_read_ch0`、`bus_dmem_io_write_ch0`、`bus_dmem_io_order_ch0` | AXI read/write observer 产生 RVFI_BUS 事件，验证外部 AXI 事务和 RVFI memory 行为一致 |
+| **summary** | `make summary` / `make axi-summary` | 91 / 98 | 全部 | 汇总并按 PASS/FAIL/UNKNOWN 统计 |
 
 91 项包括：5 (base) + 1 (cover) + 2 (deadlock) + 1 (int) + 12 (csr，filter 后) + 37 (i) + 8 (m) + 25 (c)。
+
+98 项 AXI 检查包括：上述 91 项 native-equivalent checker + 7 项 RVFI_BUS checker。AXI 配置使用 `nbus 2` 和 `buslen 32`，其中 channel 0 观测 AXI write，channel 1 观测 AXI read。
 
 ### 6.1 Cover witness
 
 `cover` 是一个**聚合可达性目标**（aggregate witness），不是功能正确性证明。它用于确认 solver 能在同一条 trace 中同时走到几个关键微架构场景，反向佐证 RTL 没有把这些场景静态屏蔽掉。具体定义见 [riscv-formal/cores/cl1/checks.cfg](riscv-formal/cores/cl1/checks.cfg) 的 `[cover]` 段。
 
-观测的 5 个事件（每个事件用一个 sticky 寄存器记录"是否曾在本 trace 出现过"，最终一次性 cover 它们的合取）：
+native cover 观测 5 个事件（每个事件用一个 sticky 寄存器记录"是否曾在本 trace 出现过"，最终一次性 cover 它们的合取）：
 
 | 事件 | 含义 | 触发条件（基于 `channel[0]`） |
 |---|---|---|
@@ -172,6 +255,13 @@ always @* if (!reset)
 ```
 
 `channel[0].cnt_insns >= 2` 把 trace 长度下界拉到至少 2 条 retire，避免 solver 用 1 拍就同时"打勾"所有事件。
+
+AXI cover 在此基础上额外要求：
+
+| 事件 | 含义 | 触发条件 |
+|---|---|---|
+| `seen_axi_read` | 至少出现一次 AXI read data bus 事务 | `rvfi_bus_valid[1] && rvfi_bus_data[1] && |rvfi_bus_rmask` |
+| `seen_axi_write` | 至少出现一次 AXI write data bus 事务 | `rvfi_bus_valid[0] && rvfi_bus_data[0] && |rvfi_bus_wmask` |
 
 运行与查看：
 
@@ -215,6 +305,11 @@ make summary-cover   # cover 子目标 summary
 | CSR mask | mstatus `any_mask=0x88`、mie `any_mask=0x888`、mepc `any_mask=0xfffffffe` | 限制 csrw 检查只在可写位上比对 |
 | 调试请求 | formal-only `chisel3.assume` 屏蔽 debug-mode 刷新 | 避免 BMC 选 anyinit 把 PC 拉去 dexc，导致 pc_fwd / trap_handler / interrupt 误报 |
 | ENV defines | `RISCV_FORMAL_INTERRUPT`（int 组）/ `RISCV_FORMAL_DEADLOCK_ENV`（hang & liveness） | 在 checks.cfg 的 `[defines <check>]` 段按需切换 |
+| 总线模式 | `CL1_EXPOSE_CORE_BUS=true` 生成 native CoreBus top；`false` 生成 AXI master top | 通过 `make verilog-native` / `make verilog-axi-cache` 切换 |
+| AXI RVFI_BUS | AXI write observer -> ch0，AXI read observer -> ch1 | `checks_axi.cfg` 中 `nbus 2` / `buslen 32` 打开 bus checker |
+| DCache uncached mask | uncached single transaction 使用 `req_mask_reg`，不复用只在写请求更新的 `wdat_mask_r` | 修正 uncached read mask 保真度，是功能语义修正 |
+| AXI byte address | `CacheBus2Axi4` 用 `PriorityEncoder(mask)` 重构 `AWADDR/ARADDR` 低位 | formal 下 LSU 输出 word-aligned addr + byte mask，AXI 协议需要 byte address |
+| AXI formal memory | `CL1_AXI_FAST_FORMAL_MEM` 固定 0 wait-state，OKAY response | 当前 baseline 聚焦 AXI/cache/ISA 一致性；任意 wait-state 和 error response 可后续增强 |
 
 ## 10. RV32-Zicsr / Priv 约定
 
@@ -238,10 +333,51 @@ CSR 通道通过 RVFI 显式暴露 `mstatus`、`mie`、`mip`、`mepc`、`mcause`
 
 ## 11. 总线模式选择
 
-在 [riscv-formal/cores/cl1/checks.cfg](riscv-formal/cores/cl1/checks.cfg) 中配置：
+本项目保留 native CoreBus 和 AXI + Cache 两套 formal 入口。
 
-- **Native Bus**（默认）：保持 `` `define CL1_USE_NATIVE_BUS `` 启用，使用 `Cl1Top.sv`
-- **AXI Bus**：注释掉该行，使用 `Cl1Top_AXI.sv`
+### 11.1 Native CoreBus
+
+- Verilog 生成：`cd CL1_Core && make verilog-native`
+- 顶层模块：`Cl1Top`
+- formal 配置：[riscv-formal/cores/cl1/checks.cfg](riscv-formal/cores/cl1/checks.cfg)
+- wrapper 宏：`` `define CL1_USE_NATIVE_BUS ``
+- 总线环境：`native_bus_dummy_slave`
+- checker 数量：91
+
+native 路径直接暴露 CL1 内部 `ibus` / `dbus` CoreBus，不启用 riscv-formal bus checker。
+
+### 11.2 AXI + Cache
+
+- Verilog 生成：`cd CL1_Core && make verilog-axi-cache`
+- 顶层模块：`Cl1Top_AXI`
+- formal 配置：[riscv-formal/cores/cl1/checks_axi.cfg](riscv-formal/cores/cl1/checks_axi.cfg)
+- wrapper 宏：不定义 `CL1_USE_NATIVE_BUS`
+- 总线环境：`axi4_dummy_slave`
+- bus observer：[riscv-formal/cores/cl1/rvfi_bus_axi4_guard.sv](riscv-formal/cores/cl1/rvfi_bus_axi4_guard.sv)
+- checker 数量：98
+
+AXI 路径启用 ICache/DCache，执行流为：
+
+```text
+IFU/LSU -> ICache/DCache -> CacheBus -> CacheBus2Axi4 -> AXI master
+       -> axi4_dummy_slave
+       -> AXI read/write observer
+       -> RVFI_BUS ch1/ch0
+```
+
+RVFI architectural memory 字段仍然来自 LSU 请求/响应；RVFI_BUS 来自 AXI 外部事务。bus checker 负责验证两者一致。
+
+当前 `checks_axi.cfg` 过滤 fault 类 bus checker：
+
+```text
+fault_ch.*
+bus_imem_fault_ch.*
+bus_dmem_fault_ch.*
+bus_dmem_io_read_fault_ch.*
+bus_dmem_io_write_fault_ch.*
+```
+
+原因是 baseline dummy slave 返回 OKAY，不建模 AXI SLVERR/DECERR。后续如果要覆盖 error response，需要先扩展 AXI memory model，再打开这些 fault checker。
 
 ## 12. 项目结构
 
@@ -257,9 +393,12 @@ cl1-formal/
     ├── checks/            # 通用验证检查模块
     ├── insns/             # 指令规范
     └── cores/cl1/         # CL1 核验证配置
-        ├── checks.cfg     # 验证参数配置
-        ├── wrapper.sv     # RVFI wrapper
+        ├── checks.cfg     # native CoreBus 验证参数配置
+        ├── checks_axi.cfg # AXI + Cache 验证参数配置
+        ├── wrapper.sv     # RVFI/RVFI_BUS wrapper
+        ├── rvfi_bus_axi4_guard.sv # AXI observer include guard
         ├── Makefile       # checks / all / csr / int / summary
         ├── summary.sh     # 汇总 SBY 运行结果
-        └── checks/        # 生成的验证任务（make checks 后）
+        ├── checks/        # native 生成的验证任务
+        └── checks_axi/    # AXI 生成的验证任务
 ```

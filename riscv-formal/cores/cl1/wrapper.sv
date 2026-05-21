@@ -2,6 +2,7 @@ module rvfi_wrapper (
 	input         clock,
 	input         reset,
 	`RVFI_OUTPUTS
+	`RVFI_BUS_OUTPUTS
 );
 
 	(* keep *) `rvformal_rand_reg ext_irq;
@@ -106,11 +107,19 @@ module rvfi_wrapper (
 
 `else
 	// ---- AXI4 interface (Cl1Top_AXI) ----
+	localparam AXI_DATA_WIDTH = 32;
+	localparam AXI_ADDRESS_WIDTH = 32;
+	localparam AXI_ID_WIDTH = 5;
+	localparam AXI_AWUSER_WIDTH = 1;
+	localparam AXI_WUSER_WIDTH = 1;
+	localparam AXI_BUSER_WIDTH = 1;
+	localparam AXI_ARUSER_WIDTH = 1;
+	localparam AXI_RUSER_WIDTH = 1;
 
 	// AXI4 AR channel (read address)
 	(* keep *) wire        ar_valid;
 	(* keep *) wire [31:0] ar_addr;
-	(* keep *) wire [3:0]  ar_id;
+	(* keep *) wire [AXI_ID_WIDTH-1:0] ar_id;
 	(* keep *) wire [7:0]  ar_len;
 	(* keep *) wire [2:0]  ar_size;
 	(* keep *) wire [1:0]  ar_burst;
@@ -125,12 +134,12 @@ module rvfi_wrapper (
 	(* keep *) wire [31:0] r_data;
 	(* keep *) wire [1:0]  r_resp;
 	(* keep *) wire        r_last;
-	(* keep *) wire [3:0]  r_id;
+	(* keep *) wire [AXI_ID_WIDTH-1:0] r_id;
 
 	// AXI4 AW channel (write address)
 	(* keep *) wire        aw_valid;
 	(* keep *) wire [31:0] aw_addr;
-	(* keep *) wire [3:0]  aw_id;
+	(* keep *) wire [AXI_ID_WIDTH-1:0] aw_id;
 	(* keep *) wire [7:0]  aw_len;
 	(* keep *) wire [2:0]  aw_size;
 	(* keep *) wire [1:0]  aw_burst;
@@ -150,10 +159,12 @@ module rvfi_wrapper (
 	(* keep *) wire        b_ready;
 	(* keep *) wire        b_valid;
 	(* keep *) wire [1:0]  b_resp;
-	(* keep *) wire [3:0]  b_id;
+	(* keep *) wire [AXI_ID_WIDTH-1:0] b_id;
 
 	// AXI4 Dummy Slave
-	axi4_dummy_slave axi_slave (
+	axi4_dummy_slave #(
+		.ID_WIDTH      (AXI_ID_WIDTH)
+	) axi_slave (
 		.clock          (clock   ),
 		.reset          (reset   ),
 
@@ -189,6 +200,81 @@ module rvfi_wrapper (
 		.b_resp         (b_resp  ),
 		.b_id           (b_id    )
 	);
+
+`ifdef RISCV_FORMAL_BUS
+	rvfi_bus_axi4_observer_write #(
+		.AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
+		.AXI_ADDRESS_WIDTH   (AXI_ADDRESS_WIDTH),
+		.AXI_ID_WIDTH        (AXI_ID_WIDTH),
+		.AXI_AWUSER_WIDTH    (AXI_AWUSER_WIDTH),
+		.AXI_WUSER_WIDTH     (AXI_WUSER_WIDTH),
+		.AXI_BUSER_WIDTH     (AXI_BUSER_WIDTH),
+		.IGNORE_PROT_DATA_INSN(1),
+		.DEPTH               (8)
+	) axi_write_observer (
+		.clock       (clock   ),
+		.reset       (reset   ),
+		.axi_awid    (aw_id   ),
+		.axi_awaddr  (aw_addr ),
+		.axi_awregion(4'b0000 ),
+		.axi_awlen   (aw_len  ),
+		.axi_awsize  (aw_size ),
+		.axi_awburst (aw_burst),
+		.axi_awlock  (aw_lock ),
+		.axi_awcache (aw_cache),
+		.axi_awprot  (aw_prot ),
+		.axi_awqos   (4'b0000 ),
+		.axi_awuser  (1'b0    ),
+		.axi_awvalid (aw_valid),
+		.axi_awready (aw_ready),
+		.axi_wdata   (w_data  ),
+		.axi_wstrb   (w_strb  ),
+		.axi_wlast   (w_last  ),
+		.axi_wuser   (1'b0    ),
+		.axi_wvalid  (w_valid ),
+		.axi_wready  (w_ready ),
+		.axi_bid     (b_id    ),
+		.axi_bresp   (b_resp  ),
+		.axi_buser   (1'b0    ),
+		.axi_bvalid  (b_valid ),
+		.axi_bready  (b_ready )
+		`RVFI_BUS_CHANNEL_CONN(0)
+	);
+
+	rvfi_bus_axi4_observer_read #(
+		.AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
+		.AXI_ADDRESS_WIDTH   (AXI_ADDRESS_WIDTH),
+		.AXI_ID_WIDTH        (AXI_ID_WIDTH),
+		.AXI_ARUSER_WIDTH    (AXI_ARUSER_WIDTH),
+		.AXI_RUSER_WIDTH     (AXI_RUSER_WIDTH),
+		.IGNORE_PROT_DATA_INSN(1),
+		.DEPTH               (8)
+	) axi_read_observer (
+		.clock       (clock   ),
+		.reset       (reset   ),
+		.axi_arid    (ar_id   ),
+		.axi_araddr  (ar_addr ),
+		.axi_arregion(4'b0000 ),
+		.axi_arlen   (ar_len  ),
+		.axi_arsize  (ar_size ),
+		.axi_arburst (ar_burst),
+		.axi_arlock  (ar_lock ),
+		.axi_arcache (ar_cache),
+		.axi_arprot  (ar_prot ),
+		.axi_arqos   (4'b0000 ),
+		.axi_aruser  (1'b0    ),
+		.axi_arvalid (ar_valid),
+		.axi_arready (ar_ready),
+		.axi_rid     (r_id    ),
+		.axi_rdata   (r_data  ),
+		.axi_rresp   (r_resp  ),
+		.axi_rlast   (r_last  ),
+		.axi_ruser   (1'b0    ),
+		.axi_rvalid  (r_valid ),
+		.axi_rready  (r_ready )
+		`RVFI_BUS_CHANNEL_CONN(1)
+	);
+`endif
 
 	Cl1Top_AXI uut (
 		.clock                      (clock   ),
@@ -265,14 +351,7 @@ module rvfi_wrapper (
 		assume (ext_irq == 1'b0);
 		assume (sft_irq == 1'b0);
 		assume (tmr_irq == 1'b0);
-		if (reset) begin
-			assume (uut.core.csr.mstatus_mie == 1'b0);
-			assume (uut.intr_pending == 1'b0);
-		end
 `else
-		if (reset) begin
-			assume (uut.intr_pending == 1'b0);
-		end
 `endif
 `ifdef RISCV_FORMAL_DEADLOCK_ENV
 		// The following assumptions ensure that when the environment quiesces, 
@@ -289,7 +368,22 @@ module rvfi_wrapper (
 		assume (b_resp == 2'b00);
 `endif
 `endif
+
 	end
+
+`ifdef RISCV_FORMAL_BUS
+`ifdef CL1_USE_NATIVE_BUS
+	assign rvfi_bus_valid = '0;
+	assign rvfi_bus_insn  = '0;
+	assign rvfi_bus_data  = '0;
+	assign rvfi_bus_fault = '0;
+	assign rvfi_bus_addr  = '0;
+	assign rvfi_bus_rmask = '0;
+	assign rvfi_bus_wmask = '0;
+	assign rvfi_bus_rdata = '0;
+	assign rvfi_bus_wdata = '0;
+`endif
+`endif
 
 endmodule
 
@@ -350,14 +444,16 @@ endmodule
 //   - Only asserts response valid when a request is pending
 //   - Properly handles burst transfers (arlen/awlen)
 //   - Returns OKAY response, non-deterministic data
-module axi4_dummy_slave (
+module axi4_dummy_slave #(
+	parameter ID_WIDTH = 5
+) (
 	input         clock,
 	input         reset,
 
 	// AR - read address
 	input         ar_valid,
 	output        ar_ready,
-	input  [3:0]  ar_id,
+	input  [ID_WIDTH-1:0] ar_id,
 	input  [7:0]  ar_len,
 	input  [2:0]  ar_size,
 
@@ -367,12 +463,12 @@ module axi4_dummy_slave (
 	output [31:0] r_data,
 	output [1:0]  r_resp,
 	output        r_last,
-	output [3:0]  r_id,
+	output [ID_WIDTH-1:0] r_id,
 
 	// AW - write address
 	input         aw_valid,
 	output        aw_ready,
-	input  [3:0]  aw_id,
+	input  [ID_WIDTH-1:0] aw_id,
 	input  [7:0]  aw_len,
 
 	// W - write data
@@ -384,21 +480,25 @@ module axi4_dummy_slave (
 	output        b_valid,
 	input         b_ready,
 	output [1:0]  b_resp,
-	output [3:0]  b_id
+	output [ID_WIDTH-1:0] b_id
 );
 
 	localparam [2:0] AXI_DELAY_MAX = 3'd4;
 
 	// ---- Read channel state machine ----
 	reg        rd_busy = 0;
-	reg [3:0]  rd_id;
+	reg [ID_WIDTH-1:0] rd_id;
 	reg [7:0]  rd_len;
 	reg [7:0]  rd_cnt;
 
 	`rvformal_rand_reg [31:0] rd_data_nd;
 	`rvformal_rand_reg rd_delay_nd;
 	reg [2:0] rd_delay_cnt = 0;
+`ifdef CL1_AXI_FAST_FORMAL_MEM
+	wire rd_delay = 1'b0;
+`else
 	wire rd_delay = rd_delay_nd && (rd_delay_cnt < AXI_DELAY_MAX);
+`endif
 
 	wire rd_last = (rd_cnt == rd_len);
 
@@ -439,13 +539,16 @@ module axi4_dummy_slave (
 
 	// ---- Write channel state machine ----
 	reg        wr_addr_busy = 0;
-	reg        wr_data_done = 0;
-	reg [3:0]  wr_id;
+	reg [ID_WIDTH-1:0] wr_id;
 	reg        wr_resp_pending = 0;
 
 	`rvformal_rand_reg wr_delay_nd;
 	reg [2:0] wr_delay_cnt = 0;
+`ifdef CL1_AXI_FAST_FORMAL_MEM
+	wire wr_delay = 1'b0;
+`else
 	wire wr_delay = wr_delay_nd && (wr_delay_cnt < AXI_DELAY_MAX);
+`endif
 
 	assign aw_ready = !wr_addr_busy && !wr_resp_pending && !reset;
 	assign w_ready  = wr_addr_busy && !reset;
@@ -456,7 +559,6 @@ module axi4_dummy_slave (
 	always @(posedge clock) begin
 		if (reset) begin
 			wr_addr_busy    <= 0;
-			wr_data_done    <= 0;
 			wr_resp_pending <= 0;
 			wr_delay_cnt    <= 0;
 		end else begin

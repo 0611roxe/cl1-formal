@@ -1,4 +1,6 @@
 JOBS ?= 8
+CHECKS_CFG ?= checks
+CHECKS_DIR ?= $(CHECKS_CFG)
 
 INSN_TARGETS_FROM_ISA = $(addsuffix _ch0,$(addprefix insn_,$(strip $(shell cat $(1)))))
 
@@ -17,7 +19,6 @@ CSR_TARGETS := \
 	csrw_mscratch_ch0 \
 	csrw_mstatus_ch0 \
 	csrw_mie_ch0 \
-	csrw_misa_ch0 \
 	csrc_any_mepc_ch0 \
 	csrc_any_mstatus_ch0 \
 	csrc_any_mie_ch0 \
@@ -34,7 +35,7 @@ COVER_TARGETS := cover
 
 SANITY_TARGETS := $(BASE_TARGETS) $(COVER_TARGETS)
 
-SUMMARY := ./summary.sh
+SUMMARY := CHECK_DIR=$(CHECKS_DIR) ./summary.sh
 
 empty :=
 space := $(empty) $(empty)
@@ -42,42 +43,54 @@ SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
 DEADLOCK_TARGETS := hang liveness_ch0
 
-.PHONY: checks all i m c base cover sanity csr int deadlock summary summary-i summary-m summary-c summary-base summary-cover summary-sanity summary-csr summary-int summary-deadlock clean clean-i clean-m clean-c clean-base clean-cover clean-sanity clean-csr clean-int clean-deadlock
+BUS_TARGETS := \
+	causal_mem_ch0 \
+	causal_io_ch0 \
+	bus_imem_ch0 \
+	bus_dmem_ch0 \
+	bus_dmem_io_read_ch0 \
+	bus_dmem_io_write_ch0 \
+	bus_dmem_io_order_ch0
 
-checks checks/makefile:
-	python3 ../../checks/genchecks.py
+.PHONY: checks all i m c base cover sanity csr int deadlock bus summary summary-i summary-m summary-c summary-base summary-cover summary-sanity summary-csr summary-int summary-deadlock summary-bus clean clean-i clean-m clean-c clean-base clean-cover clean-sanity clean-csr clean-int clean-deadlock clean-bus axi-checks axi-all axi-i axi-m axi-c axi-base axi-cover axi-sanity axi-csr axi-int axi-deadlock axi-bus axi-summary
 
-all: checks/makefile
-	$(MAKE) -C checks -j$(JOBS)
+checks $(CHECKS_DIR)/makefile:
+	python3 ../../checks/genchecks.py $(CHECKS_CFG)
 
-i: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(I_TARGETS)
+all: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS)
 
-m: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(M_TARGETS)
+i: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(I_TARGETS)
 
-c: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(C_TARGETS)
+m: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(M_TARGETS)
 
-base: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(BASE_TARGETS)
+c: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(C_TARGETS)
 
-cover: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(COVER_TARGETS)
+base: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(BASE_TARGETS)
 
-sanity: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(SANITY_TARGETS)
+cover: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(COVER_TARGETS)
 
-csr: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(CSR_TARGETS)
+sanity: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(SANITY_TARGETS)
+
+csr: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(CSR_TARGETS)
 
 INT_TARGETS := interrupt_ch0
 
-int: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(INT_TARGETS)
+int: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(INT_TARGETS)
 
-deadlock: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $(DEADLOCK_TARGETS)
+deadlock: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(DEADLOCK_TARGETS)
+
+bus: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $(BUS_TARGETS)
 
 summary:
 	@$(SUMMARY)
@@ -109,23 +122,66 @@ summary-deadlock:
 summary-int:
 	@$(SUMMARY) $(call SUMMARY_REGEX,$(INT_TARGETS))
 
-clean:
-	rm -rf checks/
+summary-bus:
+	@$(SUMMARY) $(call SUMMARY_REGEX,$(BUS_TARGETS))
 
-clean-i:        ; cd checks 2>/dev/null && rm -rf $(I_TARGETS) || true
-clean-m:        ; cd checks 2>/dev/null && rm -rf $(M_TARGETS) || true
-clean-c:        ; cd checks 2>/dev/null && rm -rf $(C_TARGETS) || true
-clean-base:     ; cd checks 2>/dev/null && rm -rf $(BASE_TARGETS) || true
-clean-cover:    ; cd checks 2>/dev/null && rm -rf $(COVER_TARGETS) || true
-clean-sanity:   ; cd checks 2>/dev/null && rm -rf $(SANITY_TARGETS) || true
-clean-csr:      ; cd checks 2>/dev/null && rm -rf $(CSR_TARGETS) || true
-clean-int:      ; cd checks 2>/dev/null && rm -rf $(INT_TARGETS) || true
-clean-deadlock: ; cd checks 2>/dev/null && rm -rf $(DEADLOCK_TARGETS) || true
+clean:
+	rm -rf $(CHECKS_DIR)/
+
+clean-i:        ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(I_TARGETS) || true
+clean-m:        ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(M_TARGETS) || true
+clean-c:        ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(C_TARGETS) || true
+clean-base:     ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(BASE_TARGETS) || true
+clean-cover:    ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(COVER_TARGETS) || true
+clean-sanity:   ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(SANITY_TARGETS) || true
+clean-csr:      ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(CSR_TARGETS) || true
+clean-int:      ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(INT_TARGETS) || true
+clean-deadlock: ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(DEADLOCK_TARGETS) || true
+clean-bus:      ; cd $(CHECKS_DIR) 2>/dev/null && rm -rf $(BUS_TARGETS) || true
+
+axi-checks:
+	$(MAKE) CHECKS_CFG=checks_axi clean checks
+
+axi-all:
+	$(MAKE) CHECKS_CFG=checks_axi clean all
+
+axi-i:
+	$(MAKE) CHECKS_CFG=checks_axi clean i
+
+axi-m:
+	$(MAKE) CHECKS_CFG=checks_axi clean m
+
+axi-c:
+	$(MAKE) CHECKS_CFG=checks_axi clean c
+
+axi-base:
+	$(MAKE) CHECKS_CFG=checks_axi clean base
+
+axi-cover:
+	$(MAKE) CHECKS_CFG=checks_axi clean cover
+
+axi-sanity:
+	$(MAKE) CHECKS_CFG=checks_axi clean sanity
+
+axi-csr:
+	$(MAKE) CHECKS_CFG=checks_axi clean csr
+
+axi-int:
+	$(MAKE) CHECKS_CFG=checks_axi clean int
+
+axi-deadlock:
+	$(MAKE) CHECKS_CFG=checks_axi clean deadlock
+
+axi-bus:
+	$(MAKE) CHECKS_CFG=checks_axi clean bus
+
+axi-summary:
+	@$(MAKE) CHECKS_CFG=checks_axi summary
 
 clean-%:
-	rm -rf checks/$*
+	rm -rf $(CHECKS_DIR)/$*
 
 Makefile: ;
 
-%: checks/makefile
-	$(MAKE) -C checks -j$(JOBS) $@
+%: $(CHECKS_DIR)/makefile
+	$(MAKE) -C $(CHECKS_DIR) -j$(JOBS) $@

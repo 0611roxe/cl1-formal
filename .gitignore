@@ -10,7 +10,7 @@ CL1_Core/wave/
 CL1_Core/saif/
 
 # riscv-formal generated checks
-riscv-formal/cores/*/checks/
+riscv-formal/cores/*/checks*/
 
 # Editor
 .idea/
