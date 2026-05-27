@@ -15,6 +15,7 @@
 module rvfi_cover_check (
 	input clock, reset, check,
 	`RVFI_INPUTS
+	`RVFI_BUS_INPUTS
 );
 `ifdef RISCV_FORMAL_ROLLBACK
 	(* keep *) integer cnt_rollback;
