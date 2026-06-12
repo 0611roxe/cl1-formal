@@ -24,8 +24,6 @@ BUS_TARGETS := \
 	bus_dmem_io_write_ch0 \
 	bus_dmem_io_order_ch0
 CSR_TARGETS := \
-	trap_handler_ch0 \
-	priv_insn_ch0 \
 	csrw_mtvec_ch0 \
 	csrw_mepc_ch0 \
 	csrw_mcause_ch0 \

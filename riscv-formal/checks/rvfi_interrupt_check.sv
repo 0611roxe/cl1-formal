@@ -3,7 +3,7 @@
 // Triggered on the first instruction of a handler that was entered due to
 // an asynchronous interrupt (rvfi_intr=1 AND mcause.interrupt=1).  The
 // ECALL/EBREAK "rvfi_intr" case (mcause.interrupt=0) is intentionally
-// skipped here and is covered by rvfi_trap_handler_check.
+// skipped here because this checker is only for asynchronous interrupts.
 //
 // P0 assertions (always on):
 //   A1: mcause.interrupt bit == 1                                 (async path)
@@ -92,10 +92,9 @@ module rvfi_interrupt_check (
 			// with RVFI semantics (RVFI only mandates rvfi_intr marks the
 			// first instruction of a handler; it does not constrain the PC
 			// to equal the dispatch target in this check's observation window).
-			// Synchronous-trap dispatch-PC correctness is instead covered by
-			// rvfi_trap_handler_check assertion E (rvfi_trap => pc_wdata ==
-			// mtvec_base).  For asynchronous interrupts the analogous check
-			// would need a dispatch-time side-channel; left as future work.
+			// Synchronous-trap dispatch-PC correctness would need a separate
+			// trap-entry checker.  For asynchronous interrupts the analogous
+			// check would need a dispatch-time side-channel; left as future work.
 			// Here we limit ourselves to the alignment invariant.
 			begin : a6_handler_pc_alignment
 `ifdef RISCV_FORMAL_COMPRESSED
