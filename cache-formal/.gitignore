@@ -1,0 +1,7 @@
+/generated/
+/rtl/
+/cache_verify/
+/cache_verify_*/
+/cache_verify.generated*
+/cache_verify.full_induct.tmp*
+/*.tmp.sby

@@ -1,0 +1,121 @@
+[tasks]
+cache
+cover
+icache_invalid
+dcache_clean
+dcache_invalid
+icache_invalid_refetch
+dcache_invalid_refetch
+dcache_clean_writeback
+dcache_clean_twice
+icache_invalid_sanity
+dcache_clean_sanity
+dcache_invalid_sanity
+icache_invalid_refetch_sanity
+dcache_invalid_refetch_sanity
+dcache_clean_writeback_sanity
+dcache_clean_twice_sanity
+
+[options]
+cache: mode bmc
+cover: mode cover
+icache_invalid: mode bmc
+dcache_clean: mode bmc
+dcache_invalid: mode bmc
+icache_invalid_refetch: mode bmc
+dcache_invalid_refetch: mode bmc
+dcache_clean_writeback: mode bmc
+dcache_clean_twice: mode bmc
+icache_invalid_sanity: mode cover
+dcache_clean_sanity: mode cover
+dcache_invalid_sanity: mode cover
+icache_invalid_refetch_sanity: mode cover
+dcache_invalid_refetch_sanity: mode cover
+dcache_clean_writeback_sanity: mode cover
+dcache_clean_twice_sanity: mode cover
+
+depth 24
+cover: depth 160
+icache_invalid: depth 360
+dcache_clean: depth 520
+dcache_invalid: depth 520
+icache_invalid_refetch: depth 330
+dcache_invalid_refetch: depth 700
+dcache_clean_writeback: depth 520
+dcache_clean_twice: depth 850
+icache_invalid_sanity: depth 360
+dcache_clean_sanity: depth 520
+dcache_invalid_sanity: depth 520
+icache_invalid_refetch_sanity: depth 330
+dcache_invalid_refetch_sanity: depth 700
+dcache_clean_writeback_sanity: depth 520
+dcache_clean_twice_sanity: depth 850
+
+[engines]
+smtbmc boolector
+
+[script]
+read_verilog -sv Cl1CacheFormal.sv
+cache: read_verilog -formal -sv cache_verify.sv
+cover: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+icache_invalid: read_verilog -formal -sv cache_verify.sv
+dcache_clean: read_verilog -formal -sv cache_verify.sv
+dcache_invalid: read_verilog -formal -sv cache_verify.sv
+icache_invalid_refetch: read_verilog -formal -sv cache_verify.sv
+dcache_invalid_refetch: read_verilog -formal -sv cache_verify.sv
+dcache_clean_writeback: read_verilog -formal -sv cache_verify.sv
+dcache_clean_twice: read_verilog -formal -sv cache_verify.sv
+icache_invalid_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+dcache_clean_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+dcache_invalid_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+icache_invalid_refetch_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+dcache_invalid_refetch_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+dcache_clean_writeback_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+dcache_clean_twice_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+cache: prep -top cl1_cache_check
+cover: prep -top cl1_cache_check
+icache_invalid: chparam -set SPEC 0 cl1_cache_control_ready_check
+icache_invalid: prep -top cl1_cache_control_ready_check
+dcache_clean: chparam -set SPEC 1 cl1_cache_control_ready_check
+dcache_clean: prep -top cl1_cache_control_ready_check
+dcache_invalid: chparam -set SPEC 2 cl1_cache_control_ready_check
+dcache_invalid: prep -top cl1_cache_control_ready_check
+icache_invalid_refetch: chparam -set SPEC 0 cl1_cache_control_invalid_check
+icache_invalid_refetch: prep -top cl1_cache_control_invalid_check
+dcache_invalid_refetch: chparam -set SPEC 1 cl1_cache_control_invalid_check
+dcache_invalid_refetch: prep -top cl1_cache_control_invalid_check
+dcache_clean_writeback: chparam -set SPEC 0 cl1_cache_control_clean_check
+dcache_clean_writeback: prep -top cl1_cache_control_clean_check
+dcache_clean_twice: chparam -set SPEC 1 cl1_cache_control_clean_check
+dcache_clean_twice: prep -top cl1_cache_control_clean_check
+icache_invalid_sanity: chparam -set SPEC 0 cl1_cache_control_ready_check
+icache_invalid_sanity: prep -top cl1_cache_control_ready_check
+dcache_clean_sanity: chparam -set SPEC 1 cl1_cache_control_ready_check
+dcache_clean_sanity: prep -top cl1_cache_control_ready_check
+dcache_invalid_sanity: chparam -set SPEC 2 cl1_cache_control_ready_check
+dcache_invalid_sanity: prep -top cl1_cache_control_ready_check
+icache_invalid_refetch_sanity: chparam -set SPEC 0 cl1_cache_control_invalid_check
+icache_invalid_refetch_sanity: chparam -set QUIET_AXI 1 cl1_cache_control_invalid_check
+icache_invalid_refetch_sanity: prep -top cl1_cache_control_invalid_check
+dcache_invalid_refetch_sanity: chparam -set SPEC 1 cl1_cache_control_invalid_check
+dcache_invalid_refetch_sanity: chparam -set QUIET_AXI 1 cl1_cache_control_invalid_check
+dcache_invalid_refetch_sanity: prep -top cl1_cache_control_invalid_check
+dcache_clean_writeback_sanity: chparam -set SPEC 0 cl1_cache_control_clean_check
+dcache_clean_writeback_sanity: prep -top cl1_cache_control_clean_check
+dcache_clean_twice_sanity: chparam -set SPEC 1 cl1_cache_control_clean_check
+dcache_clean_twice_sanity: prep -top cl1_cache_control_clean_check
+
+[files]
+generated/rtl/Cl1CacheFormal.sv
+cache_verify.sv
+common/cache_macros.vh
+generic/cache_valid_ready_monitor.sv
+generic/cache_req_rsp_contract.sv
+generic/cache_axi_master_contract.sv
+generic/cache_axi_single_outstanding_model.sv
+generic/cache_check.sv
+cl1/cl1_cache_check.sv
+cl1/cl1_cache_control_env.sv
+cl1/cl1_cache_control_ready_check.sv
+cl1/cl1_cache_control_invalid_check.sv
+cl1/cl1_cache_control_clean_check.sv
