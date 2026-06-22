@@ -23,6 +23,20 @@ BUS_TARGETS := \
 	bus_dmem_io_read_ch0 \
 	bus_dmem_io_write_ch0 \
 	bus_dmem_io_order_ch0
+NATIVE_FAULT_TARGETS := \
+	fault_ch0
+AXI_FAULT_TARGETS := \
+	fault_ch0 \
+	bus_imem_fault_ch0 \
+	bus_dmem_fault_ch0 \
+	bus_dmem_io_read_fault_ch0 \
+	bus_dmem_io_write_fault_ch0
+AXI_CACHE_FAULT_TARGETS := \
+	fault_ch0 \
+	bus_dmem_fault_ch0 \
+	bus_dmem_io_read_fault_ch0 \
+	bus_dmem_io_write_fault_ch0
+FAULT_TARGETS := $(if $(filter checks_axi,$(CHECKS_CFG)),$(AXI_FAULT_TARGETS),$(if $(filter checks_axi_cache,$(CHECKS_CFG)),$(AXI_CACHE_FAULT_TARGETS),$(NATIVE_FAULT_TARGETS)))
 CSR_TARGETS := \
 	csrw_mtvec_ch0 \
 	csrw_mepc_ch0 \
@@ -36,7 +50,7 @@ CSR_TARGETS := \
 	csrc_any_mie_ch0 \
 	csrc_const_misa_ch0
 
-GROUPS := i m c base cover sanity csr int deadlock bus
+GROUPS := i m c base cover sanity csr int deadlock bus fault
 TARGETS_i := $(I_TARGETS)
 TARGETS_m := $(M_TARGETS)
 TARGETS_c := $(C_TARGETS)
@@ -47,6 +61,7 @@ TARGETS_csr := $(CSR_TARGETS)
 TARGETS_int := $(INT_TARGETS)
 TARGETS_deadlock := $(DEADLOCK_TARGETS)
 TARGETS_bus := $(BUS_TARGETS)
+TARGETS_fault := $(FAULT_TARGETS)
 
 SUMMARY := CHECK_DIR=$(CHECKS_DIR) ./summary.sh
 
@@ -54,7 +69,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean $(GROUPS) axi-checks axi-all axi-summary FORCE
+.PHONY: checks all summary clean $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -87,6 +102,18 @@ axi-summary:
 
 axi-%: FORCE
 	$(MAKE) CHECKS_CFG=checks_axi clean $*
+
+axi-cache-checks:
+	$(MAKE) CHECKS_CFG=checks_axi_cache clean checks
+
+axi-cache-all:
+	$(MAKE) CHECKS_CFG=checks_axi_cache clean all
+
+axi-cache-summary:
+	@$(MAKE) CHECKS_CFG=checks_axi_cache summary
+
+axi-cache-%: FORCE
+	$(MAKE) CHECKS_CFG=checks_axi_cache clean $*
 
 clean-%: FORCE
 	@if [ -n "$(TARGETS_$*)" ]; then \

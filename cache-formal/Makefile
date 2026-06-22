@@ -12,9 +12,11 @@ PYTHON ?= python3
 CONTROL_TASKS := icache_invalid dcache_clean dcache_invalid icache_invalid_refetch dcache_invalid_refetch dcache_clean_writeback dcache_clean_twice
 SANITY_TASKS := icache_invalid_sanity dcache_clean_sanity dcache_invalid_sanity icache_invalid_refetch_sanity dcache_invalid_refetch_sanity dcache_clean_writeback_sanity dcache_clean_twice_sanity
 
-.PHONY: all rtl prove cover control sanity status report clean
+.PHONY: all full rtl prove cover control sanity status report clean
 
 all: prove cover
+
+full: prove control sanity cover
 
 rtl:
 	$(MAKE) -C ../CL1_Core verilog-cache-formal CL1_CACHE_IDXW=$(CACHE_IDXW)
@@ -24,12 +26,12 @@ rtl:
 
 prove: rtl
 	mkdir -p $(SBY_DIR)
-	$(SBY) --sequential -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) cache
+	$(SBY) -j $(JOBS) --sequential -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) cache
 	$(PYTHON) $(REPORT_SCRIPT) --sby-dir $(SBY_DIR) --prefix cache_verify --sby-config $(SBY_CONFIG) --write $(REPORT_FILE)
 
 cover: rtl
 	mkdir -p $(SBY_DIR)
-	$(SBY) -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) cover
+	$(SBY) -j $(JOBS) -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) cover
 	$(PYTHON) $(REPORT_SCRIPT) --sby-dir $(SBY_DIR) --prefix cache_verify --sby-config $(SBY_CONFIG) --write $(REPORT_FILE)
 
 control: rtl

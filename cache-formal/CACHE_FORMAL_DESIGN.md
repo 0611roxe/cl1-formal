@@ -114,7 +114,7 @@ vacuous pass；功能性结论仍以对应 BMC task 为准。
 | `WAYS` | `2` | CL1 Cache RTL 固定 |
 | `BANKS` | `4` | CL1 Cache RTL 固定 |
 | `DW` | `32` | CL1 Cache RTL 固定 |
-| `CL1_FORMAL_CACHE_OBSERVE` | `true` | 只打开 `dcacheWriteback` 窄 observe |
+| `CL1_CACHE_FORMAL` | `true` | 只在 cache-formal elaboration 中打开 `dcacheWriteback` 窄 observe |
 
 运行参数：
 
@@ -125,6 +125,13 @@ vacuous pass；功能性结论仍以对应 BMC task 为准。
 | 默认并行 task 数 | `JOBS=2` |
 | 主线 Top | `cl1_cache_check` |
 | Control Top | `cl1_cache_control_ready_check` / `cl1_cache_control_invalid_check` / `cl1_cache_control_clean_check` |
+
+Make 目标：
+
+| 目标 | 内容 |
+| --- | --- |
+| `make all JOBS=8` | 主 cache safety + 主 cover |
+| `make full JOBS=8` | `prove + control + sanity + cover`，覆盖下表全部 task |
 
 当前 task：
 

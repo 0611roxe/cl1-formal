@@ -165,6 +165,14 @@ def add_csr(csr_str):
     csrs.add(name)
     return name
 
+def csr_has_csrw_check(name):
+    tests = csr_tests.get(name)
+    if tests is None:
+        return True
+    # A CSR declared only as constant is not a writable CSR target. Keep the
+    # csrc_const_* consistency check, but do not generate a strict csrw_* check.
+    return any(not test.startswith("const") for test in tests)
+
 def mask_bits(test: str, bits: "list[int]", mask_len: int, invert=False):
     mask = reduce(lambda x, y: x | 1<<y, bits, 0)
     fstring = f"{test}_mask={'~' if invert else ''}{mask_len}'b{{:0{mask_len}b}}"
@@ -355,6 +363,7 @@ def check_insn(grp, insn, chanidx, csr_mode=False, illegal_csr=False):
     if illegal_csr:
         (ill_addr, ill_modes, ill_rw) = insn
         insn = f"12'h{int(ill_addr, base=16):03X}"
+        check_name = "csr_ill"
         check = f"{pf}csr_ill_{ill_addr}_ch{chanidx:d}"
         depth_cfg = get_depth_cfg([f"{pf}csr_ill", f"{pf}csr_ill_ch{chanidx:d}", f"{pf}csr_ill_{ill_addr}", f"{pf}csr_ill_{ill_addr}_ch{chanidx:d}"])
     else:
@@ -364,6 +373,7 @@ def check_insn(grp, insn, chanidx, csr_mode=False, illegal_csr=False):
             check = "insn"
         depth_cfg = get_depth_cfg([f"{pf}{check}", f"{pf}{check}_ch{chanidx:d}", f"{pf}{check}_{insn}", f"{pf}{check}_{insn}_ch{chanidx:d}"])
         check = f"{pf}{check}_{insn}_ch{chanidx:d}"
+        check_name = check.split("_", 1)[0] if grp is None else check.split("_", 2)[1]
 
     if depth_cfg is None: return
     assert len(depth_cfg) == 1
@@ -371,6 +381,7 @@ def check_insn(grp, insn, chanidx, csr_mode=False, illegal_csr=False):
     if test_disabled(check): return
     instruction_checks.add(check)
 
+    hargs["check"] = check_name
     hargs["insn"] = insn
     hargs["checkch"] = check
     hargs["channel"] = f"{chanidx:d}"
@@ -412,6 +423,8 @@ def check_insn(grp, insn, chanidx, csr_mode=False, illegal_csr=False):
 
         if "script-sources" in config:
             print_hfmt(sby_file, config["script-sources"], **hargs)
+        if (f"script-sources {hargs['check']}") in config:
+            print_hfmt(sby_file, config[f"script-sources {hargs['check']}"], **hargs)
 
         print_hfmt(sby_file, """
                 : prep -flatten -nordff -top rvfi_testbench
@@ -556,7 +569,8 @@ for grp in groups:
 
     for csr in sorted(csrs):
         for chanidx in range(nret):
-            check_insn(grp, csr, chanidx, csr_mode=True)
+            if csr_has_csrw_check(csr):
+                check_insn(grp, csr, chanidx, csr_mode=True)
 
     for ill_csr in sorted(illegal_csrs, key=lambda csr: csr[0]):
         for chanidx in range(nret):
@@ -687,6 +701,8 @@ def check_cons(grp, check, chanidx=None, start=None, trig=None, depth=None, csr_
 
         if "script-sources" in config:
             print_hfmt(sby_file, config["script-sources"], **hargs)
+        if (f"script-sources {hargs['check']}") in config:
+            print_hfmt(sby_file, config[f"script-sources {hargs['check']}"], **hargs)
 
         print_hfmt(sby_file, """
                 : prep -flatten -nordff -top rvfi_testbench

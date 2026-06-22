@@ -1,39 +1,91 @@
 # cl1
 
-RISC-V formal verification for cl1 core.
+RISC-V formal verification setup for the CL1 core.
 
-## Configuration
+## Configurations
 
-### CL1_USE_NATIVE_BUS Macro
+| Configuration | DUT | Scope |
+|---|---|---|
+| `checks.cfg` | `Cl1Top.sv` | Native CoreBus main checks, including `fault_ch0`, native fault-progress and interrupt-progress in `hang` / `liveness` |
+| `checks_axi.cfg` | `Cl1Top_AXI.sv` | AXI no-cache main checks, including full bus-fault coverage |
+| `checks_axi_cache.cfg` | `Cl1Top_AXI_CACHE.sv` | AXI + cache main checks; keeps RVFI/data-side fault checks and filters `bus_imem_fault_ch0` |
 
-The `CL1_USE_NATIVE_BUS` macro controls which bus interface is used for the CL1 core:
-
-- **With `CL1_USE_NATIVE_BUS` defined**: Instantiates the native bus version of the CL1 core (`Cl1Top.sv`)
-- **Without `CL1_USE_NATIVE_BUS` defined**: Instantiates the AXI bus version of the CL1 core (`Cl1Top_AXI.sv`)
+`CL1_USE_NATIVE_BUS` selects the native-bus DUT. It is defined by `checks.cfg`. AXI configs leave it undefined. `checks_axi.cfg` instantiates `Cl1Top_AXI`; `checks_axi_cache.cfg` defines `CL1_USE_AXI_CACHE_DUT` and instantiates `Cl1Top_AXI_CACHE`. The cache DUT is generated with ICache/DCache enabled; the default formal cache geometry is intentionally small (`CL1_AXI_FORMAL_CACHE_IDXW=1`) so the processor-plus-cache AXI path is present without turning every riscv-formal check into a large cache-internal proof.
 
 ## Usage
 
-1) Generate `Cl1Top.sv` first and place it in this directory (`cores/cl1/`)
+Generate the DUT Verilog in the top-level repository, then copy it here:
 
-   Example:
+```bash
+make -C ../../../CL1_Core verilog-rvfi
+cp ../../../CL1_Core/vsrc/Cl1Top.sv .
 
-       cp /path/to/cl1_core/vsrc/Cl1Top.sv ./Cl1Top.sv
+make -C ../../../CL1_Core verilog-rvfi-axi
+cp ../../../CL1_Core/vsrc/Cl1Top_AXI.sv .
 
-   Notes:
+make -C ../../../CL1_Core verilog-rvfi-axi-cache
+cp ../../../CL1_Core/vsrc/Cl1Top_AXI_CACHE.sv .
+```
 
-   - `Cl1Top.sv` is required by formal checks.
-   - If you want AXI mode, prepare `Cl1Top_AXI.sv` in the same directory.
+To enlarge the AXI formal cache geometry for a targeted run:
 
-2) Select bus mode in `checks.cfg`
+```bash
+make -C ../../../CL1_Core verilog-rvfi-axi-cache CL1_AXI_FORMAL_CACHE_IDXW=2
+cp ../../../CL1_Core/vsrc/Cl1Top_AXI_CACHE.sv .
+```
 
-    - Native bus mode: keep `define CL1_USE_NATIVE_BUS enabled.
-    - AXI mode: comment out `define CL1_USE_NATIVE_BUS.
+Run the native main checks:
 
-3) Generate checks
+```bash
+make checks
+make all JOBS=8
+make summary
+```
 
-    python3 ../../checks/genchecks.py
+Run the AXI main checks:
 
-4) Run checks
+```bash
+make axi-checks
+make axi-all JOBS=8
+make axi-summary
+```
 
-    make -C checks -j$(nproc)
+Run the AXI + cache main checks:
 
+```bash
+make axi-cache-checks
+make axi-cache-all JOBS=8
+make axi-cache-summary
+```
+
+Run progress-focused subsets:
+
+```bash
+make deadlock JOBS=2
+make axi-deadlock JOBS=2
+make axi-cache-deadlock JOBS=2
+make fault JOBS=2
+make axi-fault JOBS=2
+make axi-cache-fault JOBS=2
+```
+
+## Environment Notes
+
+- Deadlock/progress checks use bounded-latency dummy memory with stable arbitrary data instead of fixed NOP streams.
+- WFI is excluded only for successful instruction fetch responses, because WFI is an architectural wait state.
+- Native and AXI `fault_ch0` check RVFI fault semantics: trap, `rvfi_mem_fault`, fault masks, and `mcause`.
+- Native main `hang` / `liveness` allows arbitrary native response errors and enables interrupt-progress.
+- AXI main `hang` / `liveness` allows OKAY or SLVERR responses, enables interrupt-progress, and uses bounded AR/AW/W/R/B backpressure.
+- AXI bus/fault/progress/int/cover checks use a single-outstanding dummy slave with bounded backpressure; ordinary ISA/CSR/base checks keep zero-delay OKAY responses to avoid unnecessary state-space cost.
+- AXI cover requires read and write bus activity plus AR/AW/W/R/B delay coverage, so the stress environment is not vacuous.
+- AXI no-cache keeps all four bus-fault checkers. AXI + cache keeps `fault_ch0` and the three data-side bus-fault checkers, but filters `bus_imem_fault_ch0` because I-cache refill/fill makes external instruction faults non-one-to-one with retire PCs without extra cache state visibility.
+- AXI + cache checks observe the processor with ICache/DCache enabled through RVFI and external AXI transactions. Cache-internal invariants are kept in the separate `cache-formal full` target.
+- Interrupt-progress allows arbitrary interrupts before the progress window, then quiesces irq lines so progress cannot be satisfied or defeated by a permanent interrupt stream.
+- `misa` is a const-only CSR. `genchecks.py` skips strict `csrw_misa_ch0` generation and keeps `csrc_const_misa_ch0`.
+- `CL1_FORMAL_ASSUME_ALIGNED_32I` models the software contract: compressed instructions may be halfword-aligned, but 32-bit instructions must start at a 32-bit-aligned PC. Reverting the FetchAlign workaround is separate from this formal-environment change.
+
+## Limitations
+
+- `fence` / `fence.i` do not yet have native formal semantics in this setup.
+- The checks are bounded BMC/progress checks, not unbounded liveness proofs.
+- `RISCV_FORMAL_ALTOPS` checks M-extension control and retirement behavior without proving the real multiply/divide datapath result.
