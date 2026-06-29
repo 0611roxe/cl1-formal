@@ -69,6 +69,20 @@ make axi-fault JOBS=2
 make axi-cache-fault JOBS=2
 ```
 
+Run the CL1-specific CSR microarchitecture check:
+
+```bash
+make csr-microarch
+```
+
+This is intentionally a core-local module/interface check, not a generic
+RVFI/spec checker. The sources and SBY run output live under
+`csr_microarch/`. `make csr-unit` checks the generated `Cl1CSR` module
+directly. `make csr-exec` uses the normal `rvfi_testbench`/`rvfi_wrapper`
+execution flow, then binds a CL1-specific CSR observer into
+`Cl1Top_AXI_CACHE` to compare retired-execution CSR behavior against internal
+CSR state and EXCP-facing CSR wiring.
+
 ## Environment Notes
 
 - Deadlock/progress checks use bounded-latency dummy memory with stable arbitrary data instead of fixed NOP streams.

@@ -69,7 +69,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
+.PHONY: checks all summary clean csr-microarch csr-unit csr-exec clean-csr-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -90,6 +90,18 @@ summary-%: FORCE
 
 clean:
 	rm -rf $(CHECKS_DIR)/
+
+csr-microarch:
+	$(MAKE) -C csr_microarch run
+
+csr-unit:
+	$(MAKE) -C csr_microarch unit
+
+csr-exec:
+	$(MAKE) -C csr_microarch exec
+
+clean-csr-microarch:
+	$(MAKE) -C csr_microarch clean
 
 axi-checks:
 	$(MAKE) CHECKS_CFG=checks_axi clean checks
