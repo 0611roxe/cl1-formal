@@ -1,11 +1,9 @@
-/cover/
-/complete/
-/honest/
 /checks/
+/checks_axi/
+/checks_axi_cache/
 /testbugs.mk
-/disasm.s
-/disasm.o
 /run_check.sh
 /testbugs.sh
 /Cl1Top.sv
 /Cl1Top_AXI.sv
+/Cl1Top_AXI_CACHE.sv
