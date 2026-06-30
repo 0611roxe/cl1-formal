@@ -69,7 +69,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean csr-microarch csr-unit csr-exec clean-csr-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
+.PHONY: checks all summary clean csr-microarch csr-unit csr-exec csr-trap-scenarios csr-trap-model clean-csr-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -99,6 +99,12 @@ csr-unit:
 
 csr-exec:
 	$(MAKE) -C csr_microarch exec
+
+csr-trap-scenarios:
+	$(MAKE) -C csr_microarch trap-scenarios
+
+csr-trap-model:
+	$(MAKE) -C csr_microarch trap-model
 
 clean-csr-microarch:
 	$(MAKE) -C csr_microarch clean

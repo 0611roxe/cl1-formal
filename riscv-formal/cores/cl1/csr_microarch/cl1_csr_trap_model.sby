@@ -1,0 +1,17 @@
+[options]
+mode bmc
+expect pass
+depth 12
+
+[engines]
+smtbmc boolector
+
+[script]
+read -sv cl1_csr_trap_model_check.sv
+read_verilog -sv Cl1Top_AXI_CACHE.sv
+prep -flatten -nordff -top cl1_csr_trap_model_check
+chformal -early
+
+[files]
+cl1_csr_trap_model_check.sv
+../Cl1Top_AXI_CACHE.sv
