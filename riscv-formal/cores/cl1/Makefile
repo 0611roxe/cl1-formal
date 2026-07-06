@@ -69,7 +69,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean csr-microarch csr-unit csr-exec csr-trap-scenarios csr-trap-model clean-csr-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
+.PHONY: checks all summary clean csr-microarch csr-unit csr-exec csr-trap-scenarios csr-trap-model clean-csr-microarch microarch if-stage-uarch idex-stage-uarch clean-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -92,22 +92,34 @@ clean:
 	rm -rf $(CHECKS_DIR)/
 
 csr-microarch:
-	$(MAKE) -C csr_microarch run
+	$(MAKE) -C microarch csr
 
 csr-unit:
-	$(MAKE) -C csr_microarch unit
+	$(MAKE) -C microarch csr-unit
 
 csr-exec:
-	$(MAKE) -C csr_microarch exec
+	$(MAKE) -C microarch csr-exec
 
 csr-trap-scenarios:
-	$(MAKE) -C csr_microarch trap-scenarios
+	$(MAKE) -C microarch csr-trap-scenarios
 
 csr-trap-model:
-	$(MAKE) -C csr_microarch trap-model
+	$(MAKE) -C microarch csr-trap-model
 
 clean-csr-microarch:
-	$(MAKE) -C csr_microarch clean
+	$(MAKE) -C microarch clean-csr
+
+microarch:
+	$(MAKE) -C microarch run
+
+if-stage-uarch:
+	$(MAKE) -C microarch if-stage
+
+idex-stage-uarch:
+	$(MAKE) -C microarch idex-stage
+
+clean-microarch:
+	$(MAKE) -C microarch clean
 
 axi-checks:
 	$(MAKE) CHECKS_CFG=checks_axi clean checks

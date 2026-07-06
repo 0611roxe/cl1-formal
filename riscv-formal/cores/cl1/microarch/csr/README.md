@@ -1,7 +1,7 @@
 # CL1 CSR Microarchitecture Checks
 
-This directory contains CL1-specific CSR module/interface checks. They are not
-generic RVFI/spec checkers.
+This directory contains CL1-specific CSR module/interface checks under the
+shared `microarch/` tree. They are not generic RVFI/spec checkers.
 
 Run it from `riscv-formal/cores/cl1` with:
 
@@ -22,7 +22,11 @@ Available targets:
   writes, interrupts, exception sources, `mret`, WFI, and pipeline busy inputs
   are symbolic each cycle. Debug-module behavior is intentionally out of
   scope.
-- `make csr-microarch`: run all checks.
+- `make csr-microarch`: run all CSR checks, including `csr-exec`.
+- `make microarch`: run the fast microarchitecture suite from the parent
+  directory. It includes `csr-unit`, `csr-trap-scenarios`, and
+  `csr-trap-model`, but leaves `csr-exec` as an explicit target because it
+  uses the heavier RVFI-flow wrapper.
 
 SBY run directories are created under this directory.
 

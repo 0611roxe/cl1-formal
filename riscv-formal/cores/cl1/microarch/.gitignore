@@ -1,0 +1,6 @@
+/if_stage/cl1_if_stage/
+/idex_stage/cl1_idex_stage/
+/csr/cl1_csr_unit/
+/csr/cl1_csr_exec/
+/csr/cl1_csr_trap_scenarios/
+/csr/cl1_csr_trap_model/

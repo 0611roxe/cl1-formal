@@ -14,4 +14,4 @@ chformal -early
 
 [files]
 cl1_csr_trap_scenarios_check.sv
-../Cl1Top_AXI_CACHE.sv
+../../Cl1Top_AXI_CACHE.sv
