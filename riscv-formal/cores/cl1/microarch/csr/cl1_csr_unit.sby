@@ -1,5 +1,10 @@
+[tasks]
+bmc
+cover
+
 [options]
-mode bmc
+bmc: mode bmc
+cover: mode cover
 expect pass
 depth 8
 
@@ -7,11 +12,12 @@ depth 8
 smtbmc boolector
 
 [script]
-read -sv cl1_csr_unit_check.sv
-read_verilog -sv Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv cl1_csr_unit_check.sv
+read_verilog -formal -sv -DSYNTHESIS Cl1Top_AXI_CACHE.sv
 prep -flatten -nordff -top cl1_csr_unit_check
 chformal -early
 
 [files]
 cl1_csr_unit_check.sv
+../cl1_microarch_csr_defs.vh
 ../../Cl1Top_AXI_CACHE.sv

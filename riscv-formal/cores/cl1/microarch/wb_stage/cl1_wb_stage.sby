@@ -1,0 +1,22 @@
+[tasks]
+bmc
+cover
+
+[options]
+bmc: mode bmc
+cover: mode cover
+expect pass
+depth 8
+
+[engines]
+smtbmc boolector
+
+[script]
+read_verilog -formal -sv -DSYNTHESIS -DRISCV_FORMAL_MICROARCH_WB_STAGE Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv cl1_wb_stage_check.sv
+prep -flatten -nordff -top cl1_wb_stage_check
+chformal -early
+
+[files]
+cl1_wb_stage_check.sv
+../../Cl1Top_AXI_CACHE.sv

@@ -50,8 +50,10 @@ CL1 特有补充限制在 `cl1/` 下。
 主要性质：
 
 - valid/ready backpressure 期间 payload 稳定。
-- I/D response 不返回 error。
-- D-side response 对应已经接受的 D-side request。
+- core request payload 和合法性是环境假设；request ready 及全部 response 行为是 DUT 断言。
+- I/D response 不返回 error，且只能对应已经接受、尚未完成的 request。
+- response beat/last 必须匹配 request len；旧 response 与新 request 同周期 turnover 后必须保留新 request 状态。
+- I/D response 在 `valid && !ready` 期间必须保持 valid、data、error 和 last 稳定。
 - AXI master burst 边界满足 cache 使用所需的基本约束。
 - single-outstanding AXI 外存模型支持有限 backpressure 和 response delay。
 
@@ -110,7 +112,7 @@ vacuous pass；功能性结论仍以对应 BMC task 为准。
 
 | 参数 | 当前值 | 来源 |
 | --- | --- | --- |
-| `CL1_CACHE_IDXW` | `7` | `Makefile` 传给 `CL1_Core` elaboration |
+| `CL1_CACHE_IDXW` | 默认 `1`；full geometry 为 `7` | `Makefile` 传给 `CL1_Core` elaboration |
 | `WAYS` | `2` | CL1 Cache RTL 固定 |
 | `BANKS` | `4` | CL1 Cache RTL 固定 |
 | `DW` | `32` | CL1 Cache RTL 固定 |
@@ -131,14 +133,20 @@ Make 目标：
 | 目标 | 内容 |
 | --- | --- |
 | `make all JOBS=8` | 主 cache safety + 主 cover |
-| `make full JOBS=8` | `prove + control + sanity + cover`，覆盖下表全部 task |
+| `make full JOBS=8` | 小几何 `prove + turnover + backpressure + control + sanity + cover` |
+| `make full-geometry JOBS=8` | `IDXW=7` 下运行 `cache_full + control + sanity` |
 
 当前 task：
 
 | Task | Mode | Depth | 目标 |
 | --- | --- | --- | --- |
-| `cache` | `bmc` | `24` | 完整 Cache wrapper 边界 safety |
+| `cache` | `bmc` | `16` | 小几何 operational Cache wrapper 边界 safety |
+| `cache_full` | `bmc` | `160` | 128-index 初始化完成后的实际几何 safety |
 | `cover` | `cover` | `160` | I/D/AXI/backpressure/delay 可达性 |
+| `turnover` | `bmc` | `20` | 连续 DCache load 环境下的 response/request turnover safety |
+| `turnover_sanity` | `cover` | `20` | turnover 场景非空；当前 witness 在 step 18 |
+| `backpressure` | `bmc` | `24` | I/D hit/refill response stall 时 valid/payload 稳定并最终 handshake |
+| `backpressure_sanity` | `cover` | `24` | I/D hit/refill 四种 stall/recovery 场景非空 |
 | `icache_invalid` | `bmc` | `360` | 空 ICache invalid 完成性 |
 | `dcache_clean` | `bmc` | `520` | 空 DCache clean 完成性 |
 | `dcache_invalid` | `bmc` | `520` | 空 DCache invalid 完成性 |
@@ -148,7 +156,10 @@ Make 目标：
 | `dcache_clean_twice` | `bmc` | `850` | dirty clean 后第二次 clean 不能重复写回 |
 | `*_sanity` | `cover` | 同对应 BMC | 对应 control 场景非空 |
 
-最新运行结果见 `generated/REPORT.md`。
+最新运行结果按几何保存于 `generated/reports/idxw<IDXW>/REPORT.md`，对应的 SBY
+workdir 和 RTL 快照也使用相同几何标签，避免混合不同 elaboration 的结果。
+每个 task 另有输入 digest manifest；报告只把与当前 SBY 配置、RTL 和 checker 文件
+完全一致的结果视为当前结果，否则显示为 `STALE`。
 
 ## 7. 命名约定
 

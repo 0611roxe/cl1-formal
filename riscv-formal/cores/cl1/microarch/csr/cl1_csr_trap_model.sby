@@ -1,5 +1,8 @@
+[tasks]
+bmc
+
 [options]
-mode bmc
+bmc: mode bmc
 expect pass
 depth 12
 
@@ -7,8 +10,8 @@ depth 12
 smtbmc boolector
 
 [script]
-read -sv cl1_csr_trap_model_check.sv
-read_verilog -sv Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv cl1_csr_trap_model_check.sv
+read_verilog -formal -sv -DSYNTHESIS Cl1Top_AXI_CACHE.sv
 prep -flatten -nordff -top cl1_csr_trap_model_check
 chformal -early
 

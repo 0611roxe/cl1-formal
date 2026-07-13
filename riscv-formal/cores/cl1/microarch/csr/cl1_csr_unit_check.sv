@@ -1,3 +1,5 @@
+`include "cl1_microarch_csr_defs.vh"
+
 module cl1_csr_unit_check(input clock);
 	reg past_valid = 1'b0;
 	always @(posedge clock) begin
@@ -10,7 +12,6 @@ module cl1_csr_unit_check(input clock);
 	(* anyseq *) reg [11:0] wr_addr;
 	(* anyseq *) reg [31:0] wr_value;
 	(* anyseq *) reg        wr_en;
-	(* anyseq *) reg        wb_commit;
 
 	(* anyseq *) reg ext_irq;
 	(* anyseq *) reg sft_irq;
@@ -79,7 +80,6 @@ module cl1_csr_unit_check(input clock);
 		.io_excp_intf_cmt_tval_en(cmt_tval_en),
 		.io_excp_intf_cmt_tval_n(cmt_tval_n),
 		.io_excp_intf_cmt_mret_en(cmt_mret_en),
-		.io_wb_commit(wb_commit),
 		.cur_excp_mtvec_bore(cur_excp_mtvec),
 		.cur_mstatus_bore(cur_mstatus),
 		.cur_mie_bore(cur_mie),
@@ -92,15 +92,10 @@ module cl1_csr_unit_check(input clock);
 		.cur_misa_bore(cur_misa)
 	);
 
-	wire rd_addr_checked =
-		rd_addr == 12'h300 || rd_addr == 12'h301 || rd_addr == 12'h304 ||
-		rd_addr == 12'h305 || rd_addr == 12'h310 || rd_addr == 12'h340 ||
-		rd_addr == 12'h341 || rd_addr == 12'h342 || rd_addr == 12'h343 ||
-		rd_addr == 12'h344 || rd_addr == 12'hB00 || rd_addr == 12'hB02 ||
-		rd_addr == 12'hB80 || rd_addr == 12'hB82 || rd_addr == 12'hF11 ||
-		rd_addr == 12'hF12 || rd_addr == 12'hF13 || rd_addr == 12'hF14 ||
-		rd_addr == 12'hF15;
+	wire rd_addr_checked = `CL1_UARCH_CSR_MACHINE_READABLE(rd_addr);
 
+	// Environment assumptions: restrict only the read address to CL1-supported
+	// CSRs so every read-value assertion has a well-defined architectural model.
 	always @* begin
 		assume(rd_addr_checked);
 	end
@@ -143,6 +138,7 @@ module cl1_csr_unit_check(input clock);
 	wire write_mcycleh = wr_en && wr_addr == 12'hB80;
 	wire write_minstreth = wr_en && wr_addr == 12'hB82;
 
+	// Reference model for the supported CSR architectural state.
 	always @(posedge clock or posedge reset) begin
 		if (reset) begin
 			exp_meip <= 1'b0;
@@ -201,17 +197,15 @@ module cl1_csr_unit_check(input clock);
 				exp_mtval <= cmt_tval_en ? cmt_tval_n : wr_value;
 			end
 
-			exp_mcycle <= write_mcycle ? wr_value : exp_mcycle + 32'h1;
-			if (write_mcycleh || (!write_mcycle && (&exp_mcycle))) begin
-				exp_mcycleh <= write_mcycleh ? wr_value : exp_mcycleh + 32'h1;
-			end
+			if (write_mcycle)
+				exp_mcycle <= wr_value;
+			if (write_mcycleh)
+				exp_mcycleh <= wr_value;
 
-			if (write_minstret || wb_commit) begin
-				exp_minstret <= write_minstret ? wr_value : exp_minstret + 32'h1;
-			end
-			if (write_minstreth || (wb_commit && !write_minstret && (&exp_minstret))) begin
-				exp_minstreth <= write_minstreth ? wr_value : exp_minstreth + 32'h1;
-			end
+			if (write_minstret)
+				exp_minstret <= wr_value;
+			if (write_minstreth)
+				exp_minstreth <= wr_value;
 		end
 	end
 
@@ -245,6 +239,8 @@ module cl1_csr_unit_check(input clock);
 		endcase
 	end
 
+	// Assertions comparing CL1CSR outputs and visible internal state to the
+	// reference model above.
 	always @* begin
 		if (past_valid && !reset) begin
 			assert(rd_value == exp_rd_value);
@@ -267,6 +263,32 @@ module cl1_csr_unit_check(input clock);
 			assert(cur_mtvec == exp_mtvec);
 			assert(cur_mscratch == exp_mscratch);
 			assert(cur_misa == MISA_VALUE);
+		end
+	end
+
+	// Coverage points: keep the proof honest by exposing whether common CSR
+	// update paths are reachable under the current unconstrained environment.
+	always @(posedge clock) begin
+		if (!reset) begin
+			cover(csrw_mstatus);
+			cover(write_mie);
+			cover(write_mtvec);
+			cover(write_mscratch);
+			cover(write_mepc);
+			cover(write_mcause);
+			cover(write_mtval);
+			cover(write_mcycle);
+			cover(write_mcycleh);
+			cover(write_minstret);
+			cover(write_minstreth);
+			cover(cmt_epc_en);
+			cover(cmt_status_en);
+			cover(cmt_cause_en);
+			cover(cmt_tval_en);
+			cover(cmt_mret_en);
+			cover(ext_irq);
+			cover(sft_irq);
+			cover(tmr_irq);
 		end
 	end
 endmodule

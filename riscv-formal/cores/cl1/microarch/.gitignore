@@ -1,6 +1,3 @@
-/if_stage/cl1_if_stage/
-/idex_stage/cl1_idex_stage/
-/csr/cl1_csr_unit/
-/csr/cl1_csr_exec/
-/csr/cl1_csr_trap_scenarios/
-/csr/cl1_csr_trap_model/
+# SymbiYosys prefixes every run directory with the .sby basename. This covers
+# legacy single-task outputs as well as the _bmc/_cover task directories.
+/*/cl1_*/

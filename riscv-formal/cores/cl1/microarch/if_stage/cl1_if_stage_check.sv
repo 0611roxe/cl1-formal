@@ -26,7 +26,6 @@ module cl1_if_stage_check(input clock);
 	(* anyseq *) reg [31:0] io_flush_pc_ofst;
 	(* anyseq *) reg        io_ifu_halt;
 	(* anyseq *) reg        io_ifu_stall;
-	(* anyseq *) reg [31:0] io_boot_addr;
 
 	wire        io_toBpu_ir_vld;
 	wire [31:0] io_toBpu_inst;
@@ -87,111 +86,90 @@ module cl1_if_stage_check(input clock);
 		.io_ifu_halt(io_ifu_halt),
 		.io_ifu_stall(io_ifu_stall),
 		.io_next_pc(io_next_pc),
-		.io_boot_addr(io_boot_addr),
 		.f2_pc_bore(f2_pc_bore)
 	);
 
-endmodule
+	wire flush_pulse = io_fromdxu_flush_req | io_flush;
+	wire raw_is_c = io_toBpu_inst[1:0] != 2'b11;
+	wire req_fire = io_toaligner_valid & io_toaligner_ready;
 
-module cl1_if_stage_monitor(
-	input        clock,
-	input        reset,
-	input        io_toBpu_prdt_take,
-	input        io_pplOut_valid,
-	input        io_pplOut_bits_ifu_fetch_err,
-	input        io_toaligner_ready,
-	input        io_toaligner_valid,
-	input [31:0] io_toaligner_bits_req_pc,
-	input        io_toaligner_bits_req_redirect,
-	input        io_fromaligner_bits_err,
-	input        io_fromdxu_flush_req,
-	input        io_flush,
-	input [31:0] io_boot_addr,
-	input        ifu_req_pending,
-	input        ifu_req_pending_n,
-	input        ifu_out_r_r,
-	input        ifu_out_clr,
-	input [31:0] stored_pc,
-	input        stored_redirect,
-	input        flush_pending_r,
-	input        flush_pending_set,
-	input        flush_real,
-	input        aligner_ready,
-	input        reset_req_r,
-	input        aligner_bypVld_r,
-	input        aligner_bypDat_err
-);
-	reg past_valid = 1'b0;
+	reg boot_fetch_seen = 1'b0;
+	reg boot_clean_window = 1'b1;
+
 	always @(posedge clock) begin
-		past_valid <= 1'b1;
+		if (reset) begin
+			boot_fetch_seen <= 1'b0;
+			boot_clean_window <= 1'b1;
+		end else begin
+			if (req_fire)
+				boot_fetch_seen <= 1'b1;
+			else if (!boot_fetch_seen & (flush_pulse | io_toBpu_prdt_take))
+				boot_clean_window <= 1'b0;
+
+		end
 	end
 
-	wire flush_pulse = io_fromdxu_flush_req | io_flush;
-	wire pending_replay_ready = ifu_req_pending & ~ifu_out_r_r;
-	wire flush_pending_eligible =
-		ifu_req_pending_n | ifu_req_pending | (ifu_out_r_r & ~ifu_out_clr);
-	wire [31:0] aligned_boot_addr = {io_boot_addr[31:1], 1'b0};
-	wire expected_fetch_err = aligner_bypVld_r ? aligner_bypDat_err : io_fromaligner_bits_err;
+	// Environment assumptions: keep BPU prediction meaningful without
+	// constraining the fetch/aligner handshake space.
+	always @* begin
+		assume(!io_toBpu_prdt_take || io_toBpu_ir_vld);
+	end
 
+	// Interface and pipeline assertions.
 	always @(posedge clock) begin
 		if (!reset) begin
-			if (pending_replay_ready)
-				assert(io_toaligner_valid);
+			if (io_toaligner_valid)
+				assert(io_toaligner_bits_req_pc[0] == 1'b0);
 
-			if (ifu_req_pending & io_toaligner_valid) begin
-				assert(io_toaligner_bits_req_pc == stored_pc);
-				assert(io_toaligner_bits_req_redirect == stored_redirect);
+			assert(io_next_pc[0] == 1'b0);
+
+			if (flush_pulse)
+				assert(!io_pplOut_valid);
+
+			if (!boot_fetch_seen & boot_clean_window & !flush_pulse & !io_toBpu_prdt_take &
+					!io_ifu_halt & !io_ifu_stall & io_toaligner_valid)
+				assert(io_toaligner_bits_req_pc == 32'h80000000);
+
+			if (io_pplOut_valid) begin
+				assert(io_pplOut_bits_pc == io_toBpu_instPc);
+				assert(io_pplOut_bits_cInst == io_toBpu_inst[15:0]);
+				assert(io_pplOut_bits_isCInst == raw_is_c);
+				assert(io_pplOut_bits_prdt_taken[31:1] == 31'h0);
+				assert(io_pplOut_bits_prdt_taken[0] == io_toBpu_prdt_take);
+				if (!io_pplOut_bits_isCInst)
+					assert(!io_pplOut_bits_rvcIllegal);
 			end
-
-			if (flush_pulse & !flush_pending_eligible & !flush_pending_r)
-				assert(!flush_pending_set);
-
-			if (flush_real)
-				assert(aligner_ready);
-
-			if (reset_req_r & !ifu_req_pending & !flush_real & !io_toBpu_prdt_take
-					& io_toaligner_valid)
-				assert(io_toaligner_bits_req_pc == aligned_boot_addr);
-
-			if (io_pplOut_valid)
-				assert(io_pplOut_bits_ifu_fetch_err == expected_fetch_err);
 		end
 
 		if (past_valid && !$past(reset)) begin
 			if ($past(io_toaligner_valid & !io_toaligner_ready)) begin
-				assert(ifu_req_pending);
-				assert(stored_pc == $past(io_toaligner_bits_req_pc));
-				assert(stored_redirect == $past(io_toaligner_bits_req_redirect));
+				assert(io_toaligner_valid);
+				if (!io_toaligner_ready) begin
+					assert(io_toaligner_bits_req_pc == $past(io_toaligner_bits_req_pc));
+				end
 			end
+
+			if ($past(flush_pulse & io_fromaligner_valid & io_fromaligner_ready &
+					(!io_pplOut_ready | !io_toaligner_ready | io_ifu_stall)))
+				assert(io_fromaligner_ready);
 		end
 	end
-endmodule
 
-bind Cl1IFStage cl1_if_stage_monitor cl1_if_stage_monitor_i (
-	.clock(clock),
-	.reset(reset),
-	.io_toBpu_prdt_take(io_toBpu_prdt_take),
-	.io_pplOut_valid(io_pplOut_valid),
-	.io_pplOut_bits_ifu_fetch_err(io_pplOut_bits_ifu_fetch_err),
-	.io_toaligner_ready(io_toaligner_ready),
-	.io_toaligner_valid(io_toaligner_valid),
-	.io_toaligner_bits_req_pc(io_toaligner_bits_req_pc),
-	.io_toaligner_bits_req_redirect(io_toaligner_bits_req_redirect),
-	.io_fromaligner_bits_err(io_fromaligner_bits_err),
-	.io_fromdxu_flush_req(io_fromdxu_flush_req),
-	.io_flush(io_flush),
-	.io_boot_addr(io_boot_addr),
-	.ifu_req_pending(ifu_req_pending),
-	.ifu_req_pending_n(ifu_req_pending_n),
-	.ifu_out_r_r(ifu_out_r_r),
-	.ifu_out_clr(ifu_out_clr),
-	.stored_pc(stored_pc),
-	.stored_redirect(stored_redirect),
-	.flush_pending_r(flush_pending_r),
-	.flush_pending_set(flush_pending_set),
-	.flush_real(flush_real),
-	.aligner_ready(aligner_ready),
-	.reset_req_r(reset_req_r),
-	.aligner_bypVld_r(aligner_bypVld_r),
-	.aligner_bypDat_err(aligner_bypDat_err)
-);
+	// Coverage points: these do not constrain the proof, but make it visible
+	// whether the checker can still reach the important IF-stage situations.
+	always @(posedge clock) begin
+		if (!reset) begin
+			cover(io_toaligner_valid);
+			cover(io_toaligner_valid & !io_toaligner_ready);
+			cover(io_toaligner_valid & io_toaligner_ready);
+			cover(io_fromaligner_valid & io_fromaligner_ready);
+			cover(flush_pulse);
+			cover(io_pplOut_valid);
+			cover(io_pplOut_valid & io_pplOut_bits_isCInst);
+			cover(io_pplOut_valid & !io_pplOut_bits_isCInst);
+			cover(io_pplOut_valid & io_pplOut_bits_ifu_fetch_err);
+			cover(io_toBpu_prdt_take);
+		end
+	end
+
+endmodule

@@ -1,6 +1,11 @@
 [tasks]
 cache
+cache_full
 cover
+turnover
+turnover_sanity
+backpressure
+backpressure_sanity
 icache_invalid
 dcache_clean
 dcache_invalid
@@ -18,7 +23,12 @@ dcache_clean_twice_sanity
 
 [options]
 cache: mode bmc
+cache_full: mode bmc
 cover: mode cover
+turnover: mode bmc
+turnover_sanity: mode cover
+backpressure: mode bmc
+backpressure_sanity: mode cover
 icache_invalid: mode bmc
 dcache_clean: mode bmc
 dcache_invalid: mode bmc
@@ -34,8 +44,13 @@ dcache_invalid_refetch_sanity: mode cover
 dcache_clean_writeback_sanity: mode cover
 dcache_clean_twice_sanity: mode cover
 
-depth 24
+depth 16
+cache_full: depth 160
 cover: depth 160
+turnover: depth 20
+turnover_sanity: depth 20
+backpressure: depth 24
+backpressure_sanity: depth 24
 icache_invalid: depth 360
 dcache_clean: depth 520
 dcache_invalid: depth 520
@@ -57,7 +72,12 @@ smtbmc boolector
 [script]
 read_verilog -sv Cl1CacheFormal.sv
 cache: read_verilog -formal -sv cache_verify.sv
+cache_full: read_verilog -formal -sv cache_verify.sv
 cover: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
+turnover: read_verilog -formal -sv -DCACHE_FORMAL_TURNOVER cache_verify.sv
+turnover_sanity: read_verilog -formal -sv -DCACHE_FORMAL_TURNOVER -DCACHE_FORMAL_COVER cache_verify.sv
+backpressure: read_verilog -formal -sv -DCACHE_FORMAL_BACKPRESSURE cache_verify.sv
+backpressure_sanity: read_verilog -formal -sv -DCACHE_FORMAL_BACKPRESSURE -DCACHE_FORMAL_COVER cache_verify.sv
 icache_invalid: read_verilog -formal -sv cache_verify.sv
 dcache_clean: read_verilog -formal -sv cache_verify.sv
 dcache_invalid: read_verilog -formal -sv cache_verify.sv
@@ -73,7 +93,12 @@ dcache_invalid_refetch_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cac
 dcache_clean_writeback_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
 dcache_clean_twice_sanity: read_verilog -formal -sv -DCACHE_FORMAL_COVER cache_verify.sv
 cache: prep -top cl1_cache_check
+cache_full: prep -top cl1_cache_check
 cover: prep -top cl1_cache_check
+turnover: prep -top cl1_cache_check
+turnover_sanity: prep -top cl1_cache_check
+backpressure: prep -top cl1_cache_check
+backpressure_sanity: prep -top cl1_cache_check
 icache_invalid: chparam -set SPEC 0 cl1_cache_control_ready_check
 icache_invalid: prep -top cl1_cache_control_ready_check
 dcache_clean: chparam -set SPEC 1 cl1_cache_control_ready_check

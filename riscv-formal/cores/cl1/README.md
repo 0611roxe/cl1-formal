@@ -77,11 +77,19 @@ make csr-microarch
 
 This is intentionally a core-local module/interface check, not a generic
 RVFI/spec checker. The sources and SBY run output live under
-`csr_microarch/`. `make csr-unit` checks the generated `Cl1CSR` module
-directly. `make csr-exec` uses the normal `rvfi_testbench`/`rvfi_wrapper`
-execution flow, then binds a CL1-specific CSR observer into
-`Cl1Top_AXI_CACHE` to compare retired-execution CSR behavior against internal
-CSR state and EXCP-facing CSR wiring.
+`microarch/csr/`. `make csr-unit` checks the generated `Cl1CSR` module
+directly; trap-scenario and trap-model targets check coupled CSR/EXCP behavior.
+These microarchitecture checks are kept separate from the architectural
+RVFI/spec flow.
+
+The default `make microarch` target runs BMC for every included module and a
+paired cover task for each checker that declares cover points. A checker passes
+only when its assertions hold to the configured depth and every declared cover
+point is reachable within that depth.
+
+The microarchitecture Make entry points regenerate `Cl1Top_AXI_CACHE.sv` from
+the current `CL1_Core` sources before running, so an existing copied DUT cannot
+silently make a source change appear to pass against stale RTL.
 
 ## Environment Notes
 

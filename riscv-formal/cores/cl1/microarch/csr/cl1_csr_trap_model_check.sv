@@ -284,7 +284,6 @@ module cl1_csr_trap_model_check(input clock);
 		.io_excp_intf_cmt_tval_en(excp_cmt_tval_en),
 		.io_excp_intf_cmt_tval_n(excp_cmt_tval_n),
 		.io_excp_intf_cmt_mret_en(excp_cmt_mret_en),
-		.io_wb_commit(1'b0),
 		.cur_excp_mtvec_bore(cur_excp_mtvec),
 		.cur_mstatus_bore(cur_mstatus),
 		.cur_mie_bore(cur_mie),

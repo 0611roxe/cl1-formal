@@ -22,6 +22,15 @@ generic/cache_valid_ready_monitor.sv
 - watched line load/store/refill/writeback 数据一致性检查。
 - I/D/AXI/backpressure/response-delay cover。
 
+`cache_req_rsp_contract.sv` 将方向职责拆开：连接 DUT core-side 端口时通常设置
+`REQUEST_ASSUME_MODE=1`、`RESPONSE_ASSUME_MODE=0`，使上游 request 成为环境约束，
+而 DUT 的 response 顺序、数量和 `last` 成为断言。只有 response 本身来自 formal
+环境模型时才应启用 `RESPONSE_ASSUME_MODE`。
+
+adapter 不应把 core-side `rsp.ready` 固定为 `1`，除非目标协议明确禁止 response
+背压。公共 contract 会检查 response 在 stall 期间保持 valid、data、error 和 last；
+DUT 必须在 core handshake 前保留响应，必要时把下游 memory response 反压或缓冲。
+
 ## 2. Adapter 需要提供的信号
 
 新 DUT 建议新增自己的目录，例如：

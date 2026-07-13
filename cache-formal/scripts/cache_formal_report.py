@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import hashlib
+import json
 import re
+import sys
 from pathlib import Path
 
 
@@ -66,6 +69,66 @@ def read_text(path):
         return path.read_text(encoding="utf-8", errors="replace")
     except FileNotFoundError:
         return ""
+
+
+def parse_files(path):
+    files = []
+    section = None
+    if not path.exists():
+        return files
+
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1]
+            continue
+        if section == "files":
+            files.append(line)
+    return files
+
+
+def input_digest(sby_config, rtl):
+    digest = hashlib.sha256()
+    digest.update(b"config\0")
+    digest.update(sby_config.read_bytes())
+
+    for entry in parse_files(sby_config):
+        source = Path(entry)
+        if source.name == "Cl1CacheFormal.sv":
+            source = rtl
+        digest.update(b"\0file\0")
+        digest.update(entry.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(source.read_bytes())
+    return digest.hexdigest()
+
+
+def read_manifest(workdir):
+    path = workdir / "cache_formal_manifest.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def stamp_results(sby_dir, prefix, tasks, geometry, digest, stamp_after=None):
+    manifest = {
+        "geometry": geometry,
+        "input_digest": digest,
+    }
+    for task in tasks:
+        workdir = sby_dir / f"{prefix}_{task}"
+        logfile = workdir / "logfile.txt"
+        is_current_run = stamp_after is None or (
+            logfile.exists() and logfile.stat().st_mtime >= stamp_after
+        )
+        if workdir.exists() and is_current_run:
+            (workdir / "cache_formal_manifest.json").write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
 
 
 def extract_result(workdir):
@@ -135,11 +198,21 @@ def extract_result(workdir):
     return result
 
 
-def collect_results(sby_dir, prefix, tasks, mode, depth, top, macros):
+def collect_results(sby_dir, prefix, tasks, mode, depth, top, macros, geometry, digest):
     rows = []
     for task in tasks:
         workdir = sby_dir / f"{prefix}_{task}"
         result = extract_result(workdir)
+        manifest = read_manifest(workdir)
+        if result["status"] != "MISSING":
+            if manifest is None:
+                if result["status"] == "PASS":
+                    result["status"] = "STALE"
+                result["note"] = "missing input manifest"
+            elif manifest.get("geometry") != geometry or manifest.get("input_digest") != digest:
+                if result["status"] == "PASS":
+                    result["status"] = "STALE"
+                result["note"] = "input digest mismatch"
         result.update({
             "task": task,
             "mode": mode.get(task, ""),
@@ -164,7 +237,7 @@ def table(rows, columns):
     return "\n".join([header, sep] + [fmt(row) for row in rows])
 
 
-def markdown_report(rows, sby_dir, sby_config):
+def markdown_report(rows, sby_dir, sby_config, geometry, rtl, digest):
     now = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %z")
     lines = [
         "# CL1 Cache Formal Report",
@@ -175,9 +248,11 @@ def markdown_report(rows, sby_dir, sby_config):
         "",
         "## Inputs",
         "",
+        f"- Geometry: `{geometry}`",
         f"- SBY config: `{sby_config}`",
         f"- SBY workdir root: `{sby_dir}`",
-        "- RTL: `generated/rtl/Cl1CacheFormal.sv`",
+        f"- RTL snapshot: `{rtl}`",
+        f"- Input digest: `{digest}`",
         "",
         "## Results",
         "",
@@ -237,14 +312,32 @@ def main():
     parser.add_argument("--sby-dir", default="generated/sby")
     parser.add_argument("--prefix", default="cache_verify")
     parser.add_argument("--sby-config", default="cache_verify.sby")
+    parser.add_argument("--geometry", default="unspecified")
+    parser.add_argument("--rtl", default="generated/rtl/Cl1CacheFormal.sv")
+    parser.add_argument("--stamp-tasks", nargs="+")
+    parser.add_argument("--stamp-after", type=float)
+    parser.add_argument("--require-tasks", nargs="+")
     parser.add_argument("--write")
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()
 
     sby_config = Path(args.sby_config)
     sby_dir = Path(args.sby_dir)
+    rtl = Path(args.rtl)
+    digest = input_digest(sby_config, rtl)
     tasks, mode, depth, top, macros = parse_sby(sby_config)
-    rows = collect_results(sby_dir, args.prefix, tasks, mode, depth, top, macros)
+    if args.stamp_tasks:
+        stamp_results(
+            sby_dir,
+            args.prefix,
+            args.stamp_tasks,
+            args.geometry,
+            digest,
+            args.stamp_after,
+        )
+    rows = collect_results(
+        sby_dir, args.prefix, tasks, mode, depth, top, macros, args.geometry, digest
+    )
 
     if args.status or not args.write:
         columns = [
@@ -260,9 +353,21 @@ def main():
     if args.write:
         out = Path(args.write)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(markdown_report(rows, sby_dir, sby_config), encoding="utf-8")
+        out.write_text(
+            markdown_report(rows, sby_dir, sby_config, args.geometry, args.rtl, digest),
+            encoding="utf-8",
+        )
         print(f"Wrote {out}")
+
+    if args.require_tasks:
+        by_task = {row["task"]: row["status"] for row in rows}
+        failed = [task for task in args.require_tasks if by_task.get(task) != "PASS"]
+        if failed:
+            details = ", ".join(f"{task}={by_task.get(task, 'UNKNOWN_TASK')}" for task in failed)
+            print(f"Required formal tasks are not PASS: {details}", file=sys.stderr)
+            return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

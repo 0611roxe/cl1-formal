@@ -1,5 +1,10 @@
+[tasks]
+bmc
+cover
+
 [options]
-mode bmc
+bmc: mode bmc
+cover: mode cover
 expect pass
 depth 8
 
@@ -7,11 +12,36 @@ depth 8
 smtbmc boolector
 
 [script]
-read_verilog -sv Cl1Top_AXI_CACHE.sv
-read -sv cl1_if_stage_check.sv
+read_verilog -formal -sv -DSYNTHESIS -DRISCV_FORMAL_MICROARCH_IF_STAGE Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv cl1_if_stage_check.sv
 prep -flatten -nordff -top cl1_if_stage_check
+select -clear
+select -module cl1_if_stage_check
+add -output uarch_io_fromdxu_flush_req 1
+add -output uarch_io_flush 1
+add -output uarch_io_toaligner_valid 1
+add -output uarch_io_toaligner_ready 1
+add -output uarch_ifu_req_pending 1
+add -output uarch_ifu_out_r_r 1
+add -output uarch_ifu_out_clr 1
+add -output uarch_flush_pending_r 1
+add -output uarch_flush_pending_set 1
+cd cl1_if_stage_check
+connect -set uarch_io_fromdxu_flush_req \io_fromdxu_flush_req
+connect -set uarch_io_flush \io_flush
+connect -set uarch_io_toaligner_valid \io_toaligner_valid
+connect -set uarch_io_toaligner_ready \io_toaligner_ready
+connect -set uarch_ifu_req_pending \dut.ifu_req_pending
+connect -set uarch_ifu_out_r_r \dut.ifu_out_r_r
+connect -set uarch_ifu_out_clr \dut.ifu_out_clr
+connect -set uarch_flush_pending_r \dut.flush_pending_r
+connect -set uarch_flush_pending_set \dut.flush_pending_set
+cd ..
+read_verilog -formal -sv cl1_if_stage_post_check.sv
+prep -flatten -nordff -top cl1_if_stage_post_check
 chformal -early
 
 [files]
 cl1_if_stage_check.sv
+cl1_if_stage_post_check.sv
 ../../Cl1Top_AXI_CACHE.sv

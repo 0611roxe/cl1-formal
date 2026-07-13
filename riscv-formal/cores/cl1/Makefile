@@ -69,7 +69,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean csr-microarch csr-unit csr-exec csr-trap-scenarios csr-trap-model clean-csr-microarch microarch if-stage-uarch idex-stage-uarch clean-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
+.PHONY: checks all summary clean csr-microarch csr-unit csr-trap-scenarios csr-trap-model clean-csr-microarch microarch microarch-mdu microarch-mdu-real if-stage-uarch idex-stage-uarch clean-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -92,13 +92,10 @@ clean:
 	rm -rf $(CHECKS_DIR)/
 
 csr-microarch:
-	$(MAKE) -C microarch csr
+	$(MAKE) -C microarch csr-all
 
 csr-unit:
 	$(MAKE) -C microarch csr-unit
-
-csr-exec:
-	$(MAKE) -C microarch csr-exec
 
 csr-trap-scenarios:
 	$(MAKE) -C microarch csr-trap-scenarios
@@ -111,6 +108,12 @@ clean-csr-microarch:
 
 microarch:
 	$(MAKE) -C microarch run
+
+microarch-mdu:
+	$(MAKE) -C microarch mdu-altops
+
+microarch-mdu-real:
+	$(MAKE) -C microarch mdu-real
 
 if-stage-uarch:
 	$(MAKE) -C microarch if-stage

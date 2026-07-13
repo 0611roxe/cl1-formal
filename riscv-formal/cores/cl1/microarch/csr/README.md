@@ -3,38 +3,29 @@
 This directory contains CL1-specific CSR module/interface checks under the
 shared `microarch/` tree. They are not generic RVFI/spec checkers.
 
-Run it from `riscv-formal/cores/cl1` with:
+Run the fast microarchitecture suite from `riscv-formal/cores/cl1` with:
 
 ```bash
-make csr-microarch
+make microarch
 ```
 
-Available targets:
+Available targets inside this directory:
 
-- `make csr-unit`: direct `Cl1CSR` unit-level state/reference check.
-- `make csr-exec`: RVFI-flow CSR execution check. It uses the existing
-  `rvfi_testbench` and `rvfi_wrapper` flow, then binds a CL1-specific CSR
-  observer into `Cl1Top_AXI_CACHE`.
-- `make csr-trap-scenarios`: scenario-driven `Cl1EXCP` + `Cl1CSR` coupled
-  check for trap and interrupt CSR side effects.
-- `make csr-trap-model`: bounded free-running `Cl1EXCP` + `Cl1CSR`
+- `make unit`: direct `Cl1CSR` unit-level state/reference check.
+- `make trap-scenarios`: scenario-driven `Cl1EXCP` + `Cl1CSR` coupled check
+  for trap and interrupt CSR side effects.
+- `make trap-model`: bounded free-running `Cl1EXCP` + `Cl1CSR`
   reference-model check. It does not schedule fixed scenarios; machine CSR
   writes, interrupts, exception sources, `mret`, WFI, and pipeline busy inputs
-  are symbolic each cycle. Debug-module behavior is intentionally out of
-  scope.
-- `make csr-microarch`: run all CSR checks, including `csr-exec`.
-- `make microarch`: run the fast microarchitecture suite from the parent
-  directory. It includes `csr-unit`, `csr-trap-scenarios`, and
-  `csr-trap-model`, but leaves `csr-exec` as an explicit target because it
-  uses the heavier RVFI-flow wrapper.
+  are symbolic each cycle. Debug-module behavior is intentionally out of scope.
 
 SBY run directories are created under this directory.
 
 Covered CL1 CSR behavior:
 
-- The RVFI-flow check uses the CL1 architectural CSR matrix from
-  `CSRs.machineReadable` and `CSRs.readOnly`: legal CSR reads must not trap,
-  unsupported CSR accesses must trap, and writes to read-only CSRs must trap.
+- The IDEX checker uses the CL1 architectural CSR matrix from
+  `CSRs.machineReadable` and `CSRs.readOnly`: unsupported CSR accesses and
+  writes to read-only CSRs must be classified as illegal.
 - Supported machine CSRs include `misa`, `mstatus`, `mstatush`, `mtvec`,
   `mscratch`, `mepc`, `mcause`, `mtval`, `mip`, and `mie`.
 - Machine information CSRs: `mvendorid=0`, `marchid=5`, `mimpid=0`,
@@ -44,8 +35,8 @@ Covered CL1 CSR behavior:
   checker intentionally does not add the riscv-formal 64-bit `mcycle/minstret`
   CSR sideband.
 - Debug CSRs exist inside `Cl1CSR`, but they are not in CL1's machine-readable
-  CSR set for normal CSR instructions, so `csr-exec` checks normal instruction
-  accesses to them as illegal/trapping accesses.
+  CSR set for normal CSR instructions; the IDEX legality checker classifies
+  those accesses as illegal.
 - The trap scenario check is a symbolic interface-contract check, not a
   counterexample regression. It leaves PC values, `mtvec` base, exception
   cause/`mtval`, interrupt pending/enable combinations, and relevant
@@ -63,3 +54,9 @@ Covered CL1 CSR behavior:
   outputs, CSR-facing control, CSR state outputs, WFI halt outputs, and bore
   observer signals match the reference model across bounded arbitrary input
   traces.
+
+An RVFI-space internal CSR cross-check is intentionally not maintained here:
+the previous whole-core target did not instantiate its CL1-specific checker
+and therefore produced vacuous results while dominating regression time.
+ISA/RVFI checks remain architectural; CSR microarchitecture behavior is
+covered by the unit, trap-scenario, trap-model, IDEX, and WB checks above.

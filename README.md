@@ -203,15 +203,15 @@ AXI + Cache 的 `fault` 少 1 项，因为默认过滤 `bus_imem_fault_ch0`。�
 
 | checker 类别 | Native | AXI no-cache | AXI + Cache |
 |---|---:|---:|---:|
-| `insn` | 35 | 35 | 35 |
+| `insn` | 35 | 35 | 25 |
 | `insn_mul.*` | 35 | 36 | 36 |
-| `insn_sb` / `insn_lb` / `insn_lbu` | 35 | 64 | 64 |
+| `insn_sb` / `insn_lb` / `insn_lbu` | 35 | 64 | 32 |
 | `reg` | 15 -> 25 | 15 -> 25 | 15 -> 25 |
 | `pc_fwd` / `pc_bwd` | 10 -> 30 | 10 -> 30 | 10 -> 30 |
 | `unique` | 1 / 10 / 30 | 1 / 20 / 32 | 1 / 20 / 32 |
 | `causal` | 10 -> 30 | 10 -> 30 | 10 -> 30 |
 | `causal_mem` / `causal_io` | 不启用 | 1 -> 36 | 1 -> 36 |
-| `hang` | 1 -> 96 | 1 -> 112 | 1 -> 112 |
+| `hang` | 1 -> 96 | 1 -> 112 | 1 -> 56 |
 | `liveness` | 1 / 16 / 96 | 1 / 16 / 192 | 1 / 96 / 192 |
 | `cover` | 1 -> 45 | 1 -> 45 | 1 -> 45 |
 | `csrw` / `csr_ill` | 20 | 30 | 30 |

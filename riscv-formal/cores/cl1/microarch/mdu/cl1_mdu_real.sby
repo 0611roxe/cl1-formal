@@ -1,0 +1,70 @@
+[tasks]
+mul
+mulh
+mulhsu
+mulhu
+div
+rem
+divu
+remu
+special_cover
+mul_full
+mulh_full
+mulhsu_full
+mulhu_full
+
+[options]
+mul: mode bmc
+mulh: mode bmc
+mulhsu: mode bmc
+mulhu: mode bmc
+div: mode bmc
+rem: mode bmc
+divu: mode bmc
+remu: mode bmc
+special_cover: mode cover
+mul_full: mode bmc
+mulh_full: mode bmc
+mulhsu_full: mode bmc
+mulhu_full: mode bmc
+
+mul: depth 24
+mulh: depth 24
+mulhsu: depth 24
+mulhu: depth 24
+div: depth 46
+rem: depth 46
+divu: depth 46
+remu: depth 46
+special_cover: depth 46
+mul_full: depth 24
+mulh_full: depth 24
+mulhsu_full: depth 24
+mulhu_full: depth 24
+
+expect pass
+
+[engines]
+smtbmc boolector
+
+[script]
+read_verilog -formal -sv -DSYNTHESIS Cl1Top_AXI_CACHE_REALMDU.sv
+mul: read_verilog -formal -sv -DMDU_REAL_MUL -DMDU_REAL_MUL_TINY_OPERANDS cl1_mdu_real_check.sv
+mulh: read_verilog -formal -sv -DMDU_REAL_MULH -DMDU_REAL_MUL_TINY_OPERANDS cl1_mdu_real_check.sv
+mulhsu: read_verilog -formal -sv -DMDU_REAL_MULHSU -DMDU_REAL_MUL_TINY_OPERANDS cl1_mdu_real_check.sv
+mulhu: read_verilog -formal -sv -DMDU_REAL_MULHU -DMDU_REAL_MUL_TINY_OPERANDS cl1_mdu_real_check.sv
+div: read_verilog -formal -sv -DMDU_REAL_DIV -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
+rem: read_verilog -formal -sv -DMDU_REAL_REM -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
+divu: read_verilog -formal -sv -DMDU_REAL_DIVU -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
+remu: read_verilog -formal -sv -DMDU_REAL_REMU -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
+special_cover: read_verilog -formal -sv -DMDU_REAL_SPECIAL_COVER cl1_mdu_real_check.sv
+mul_full: read_verilog -formal -sv -DMDU_REAL_MUL cl1_mdu_real_check.sv
+mulh_full: read_verilog -formal -sv -DMDU_REAL_MULH cl1_mdu_real_check.sv
+mulhsu_full: read_verilog -formal -sv -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
+mulhu_full: read_verilog -formal -sv -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+prep -flatten -nordff -top cl1_mdu_real_check
+chformal -early
+
+[files]
+cl1_mdu_real_check.sv
+rtl/Cl1Top_AXI_CACHE_REALMDU.sv

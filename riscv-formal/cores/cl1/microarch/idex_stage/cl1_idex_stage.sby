@@ -1,17 +1,34 @@
+[tasks]
+bmc
+cover
+
 [options]
-mode bmc
+bmc: mode bmc
+cover: mode cover
 expect pass
-depth 8
+depth 24
 
 [engines]
 smtbmc boolector
 
 [script]
-read_verilog -sv Cl1Top_AXI_CACHE.sv
-read -sv cl1_idex_stage_check.sv
+read_verilog -formal -sv -DSYNTHESIS -DRISCV_FORMAL_MICROARCH_IDEX_STAGE Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv cl1_idex_stage_check.sv
 prep -flatten -nordff -top cl1_idex_stage_check
+select -clear
+select -module cl1_idex_stage_check
+add -output uarch_mdu_io_in_valid 1
+add -output uarch_dx_exec_done 1
+cd cl1_idex_stage_check
+connect -set uarch_mdu_io_in_valid \dut.mdu.io_in_valid
+connect -set uarch_dx_exec_done \dut.dx_exec_done
+cd ..
+read_verilog -formal -sv cl1_idex_stage_post_check.sv
+prep -flatten -nordff -top cl1_idex_stage_post_check
 chformal -early
 
 [files]
 cl1_idex_stage_check.sv
+cl1_idex_stage_post_check.sv
+../cl1_microarch_csr_defs.vh
 ../../Cl1Top_AXI_CACHE.sv

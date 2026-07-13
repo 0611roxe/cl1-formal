@@ -294,9 +294,6 @@ module rvfi_wrapper (
 		.io_sft_irq                 (sft_irq ),
 		.io_tmr_irq                 (tmr_irq ),
 		.io_dbg_req_i               (1'b0    ),
-`ifdef CL1_USE_AXI_CACHE_DUT
-		.io_boot_addr               (32'h80000000),
-`endif
 
 		// AXI4 AR
 		.io_master_ar_valid         (ar_valid),

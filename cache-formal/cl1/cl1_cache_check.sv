@@ -7,6 +7,7 @@ module cl1_cache_check(input wire clock);
   (* anyseq *) reg        ic_req_valid_any;
   (* anyseq *) reg [31:0] ic_req_addr_any;
   (* anyseq *) reg        ic_req_cache_any;
+  (* anyseq *) reg        ic_rsp_ready_any;
 
   (* anyseq *) reg        dc_req_valid_any;
   (* anyseq *) reg [31:0] dc_req_addr_any;
@@ -14,12 +15,11 @@ module cl1_cache_check(input wire clock);
   (* anyseq *) reg        dc_req_wen_any;
   (* anyseq *) reg        dc_req_cache_any;
   (* anyseq *) reg [1:0]  dc_req_size_any;
+  (* anyseq *) reg        dc_rsp_ready_any;
 
   wire [31:0] ic_req_addr = {ic_req_addr_any[31:2], 2'b00};
   wire [31:0] dc_req_addr = dc_req_addr_any;
   wire [3:0]  dc_req_mask = cf_mask_from_size(dc_req_addr[1:0], dc_req_size_any);
-  wire        core_rsp_ready = 1'b1;
-
   wire        ic_req_ready;
   wire        ic_rsp_valid;
   wire [31:0] ic_rsp_data;
@@ -93,7 +93,7 @@ module cl1_cache_check(input wire clock);
     .io_icore_req_bits_mask      (4'hf),
     .io_icore_req_bits_cache     (ic_req_cache_any),
     .io_icore_req_bits_size      (2'b10),
-    .io_icore_rsp_ready          (core_rsp_ready),
+    .io_icore_rsp_ready          (ic_rsp_ready_any),
     .io_icore_rsp_valid          (ic_rsp_valid),
     .io_icore_rsp_bits_data      (ic_rsp_data),
     .io_icore_rsp_bits_err       (ic_rsp_err),
@@ -106,7 +106,7 @@ module cl1_cache_check(input wire clock);
     .io_dcore_req_bits_mask      (dc_req_mask),
     .io_dcore_req_bits_cache     (dc_req_cache_any),
     .io_dcore_req_bits_size      (dc_req_size_any),
-    .io_dcore_rsp_ready          (core_rsp_ready),
+    .io_dcore_rsp_ready          (dc_rsp_ready_any),
     .io_dcore_rsp_valid          (dc_rsp_valid),
     .io_dcore_rsp_bits_data      (dc_rsp_data),
     .io_dcore_rsp_bits_err       (dc_rsp_err),
@@ -184,7 +184,7 @@ module cl1_cache_check(input wire clock);
     .ic_req_addr (ic_req_addr),
     .ic_req_cache(ic_req_cache_any),
     .ic_rsp_valid(ic_rsp_valid),
-    .ic_rsp_ready(core_rsp_ready),
+    .ic_rsp_ready(ic_rsp_ready_any),
     .ic_rsp_data (ic_rsp_data),
     .ic_rsp_err  (ic_rsp_err),
 
@@ -197,7 +197,7 @@ module cl1_cache_check(input wire clock);
     .dc_req_cache(dc_req_cache_any),
     .dc_req_size (dc_req_size_any),
     .dc_rsp_valid(dc_rsp_valid),
-    .dc_rsp_ready(core_rsp_ready),
+    .dc_rsp_ready(dc_rsp_ready_any),
     .dc_rsp_data (dc_rsp_data),
     .dc_rsp_err  (dc_rsp_err),
 
