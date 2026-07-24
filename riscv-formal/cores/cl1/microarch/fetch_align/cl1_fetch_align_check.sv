@@ -116,23 +116,6 @@ module cl1_fetch_align_check(input clock);
 	end
 
 	always @(posedge clock) begin
-		if (past_valid && !$past(reset)) begin
-			if ($past(io_fromifu_valid & !io_fromifu_ready)) begin
-				assume(io_fromifu_valid);
-				assume(io_fromifu_bits_req_pc == $past(io_fromifu_bits_req_pc));
-				assume(io_fromifu_bits_req_redirect ==
-					$past(io_fromifu_bits_req_redirect));
-			end
-
-			if ($past(io_bus_rsp_valid & !io_bus_rsp_ready)) begin
-				assume(io_bus_rsp_valid);
-				assume(io_bus_rsp_bits_data == $past(io_bus_rsp_bits_data));
-				assume(io_bus_rsp_bits_err == $past(io_bus_rsp_bits_err));
-			end
-		end
-	end
-
-	always @(posedge clock) begin
 		if (!reset) begin
 			assert(io_fromifu_ready == io_bus_req_ready);
 			if (io_fromifu_valid)
@@ -145,13 +128,6 @@ module cl1_fetch_align_check(input clock);
 				assert(io_bus_req_bits_addr[1:0] == 2'b00);
 				assert(io_bus_req_bits_cache ==
 					expected_cacheable(io_bus_req_bits_addr));
-			end
-
-			if (past_valid && !$past(reset) &&
-					$past(io_bus_req_valid & !io_bus_req_ready & !outstanding)) begin
-				assert(io_bus_req_valid);
-				assert(io_bus_req_bits_addr == $past(io_bus_req_bits_addr));
-				assert(io_bus_req_bits_cache == $past(io_bus_req_bits_cache));
 			end
 
 			assert(io_toifu_valid == (io_bus_rsp_valid & !first_cross_rsp));

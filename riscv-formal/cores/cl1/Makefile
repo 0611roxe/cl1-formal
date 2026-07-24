@@ -1,6 +1,7 @@
 JOBS ?= 8
 CHECKS_CFG ?= checks
 CHECKS_DIR ?= $(CHECKS_CFG)
+MDU_MODE ?= altops
 
 INSN_TARGETS_FROM_ISA = $(addsuffix _ch0,$(addprefix insn_,$(strip $(shell cat $(1)))))
 
@@ -69,7 +70,7 @@ empty :=
 space := $(empty) $(empty)
 SUMMARY_REGEX = '^($(subst $(space),|,$(strip $(1))))$$'
 
-.PHONY: checks all summary clean csr-microarch csr-unit csr-trap-scenarios csr-trap-model clean-csr-microarch microarch microarch-mdu microarch-mdu-real if-stage-uarch idex-stage-uarch clean-microarch $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
+.PHONY: checks all summary clean microarch microarch-csr microarch-mdu clean-microarch deadlock-all $(GROUPS) axi-checks axi-all axi-summary axi-cache-checks axi-cache-all axi-cache-summary FORCE
 
 FORCE:
 
@@ -91,35 +92,19 @@ summary-%: FORCE
 clean:
 	rm -rf $(CHECKS_DIR)/
 
-csr-microarch:
-	$(MAKE) -C microarch csr-all
-
-csr-unit:
-	$(MAKE) -C microarch csr-unit
-
-csr-trap-scenarios:
-	$(MAKE) -C microarch csr-trap-scenarios
-
-csr-trap-model:
-	$(MAKE) -C microarch csr-trap-model
-
-clean-csr-microarch:
-	$(MAKE) -C microarch clean-csr
-
 microarch:
 	$(MAKE) -C microarch run
 
+microarch-csr:
+	$(MAKE) -C microarch csr
+
 microarch-mdu:
-	$(MAKE) -C microarch mdu-altops
+	$(MAKE) -C microarch mdu MDU_MODE=$(MDU_MODE)
 
-microarch-mdu-real:
-	$(MAKE) -C microarch mdu-real
-
-if-stage-uarch:
-	$(MAKE) -C microarch if-stage
-
-idex-stage-uarch:
-	$(MAKE) -C microarch idex-stage
+deadlock-all:
+	$(MAKE) CHECKS_CFG=checks deadlock
+	$(MAKE) CHECKS_CFG=checks_axi deadlock
+	$(MAKE) CHECKS_CFG=checks_axi_cache deadlock
 
 clean-microarch:
 	$(MAKE) -C microarch clean

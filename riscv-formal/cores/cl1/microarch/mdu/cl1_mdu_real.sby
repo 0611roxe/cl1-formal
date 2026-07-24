@@ -8,10 +8,55 @@ rem
 divu
 remu
 special_cover
+protocol_safety
+protocol_progress
+protocol_cover
 mul_full
 mulh_full
 mulhsu_full
 mulhu_full
+divrem_signed_full
+divrem_unsigned_full
+mul_full_cover
+mulh_full_cover
+mulhsu_full_cover
+mulhu_full_cover
+divrem_signed_full_cover
+divrem_unsigned_full_cover
+mul_ss_strict_pp
+mul_ss_strict_pn
+mul_ss_strict_np
+mul_ss_strict_nn
+mulhsu_strict_p
+mulhsu_strict_n
+mulhu_strict
+booth_recode_signed
+booth_recode_unsigned
+booth_scaled_step_signed
+booth_scaled_step_unsigned
+booth_scaled_range_mulh
+booth_scaled_range_mulhsu
+booth_scaled_range_mulhu
+booth_scaled_equiv_mulh
+booth_scaled_equiv_mulhsu
+booth_scaled_equiv_mulhu
+div_invariant_signed_pp
+div_invariant_signed_pn
+div_invariant_signed_np
+div_invariant_signed_nn
+div_invariant_unsigned_pn
+div_invariant_unsigned_nn
+div_invariant_unsigned_pp1
+div_invariant_unsigned_np1
+div_invariant_unsigned_pp0
+div_invariant_unsigned_np0
+div_range_signed
+div_range_unsigned
+div_step_signed
+div_step_unsigned
+div_quotient_recode
+strict_mul_completion
+strict_div_completion
 
 [options]
 mul: mode bmc
@@ -23,29 +68,176 @@ rem: mode bmc
 divu: mode bmc
 remu: mode bmc
 special_cover: mode cover
+protocol_safety: mode bmc
+protocol_progress: mode bmc
+protocol_cover: mode cover
 mul_full: mode bmc
 mulh_full: mode bmc
 mulhsu_full: mode bmc
 mulhu_full: mode bmc
+divrem_signed_full: mode bmc
+divrem_unsigned_full: mode bmc
+mul_full_cover: mode cover
+mulh_full_cover: mode cover
+mulhsu_full_cover: mode cover
+mulhu_full_cover: mode cover
+divrem_signed_full_cover: mode cover
+divrem_unsigned_full_cover: mode cover
+mul_ss_strict_pp: mode bmc
+mul_ss_strict_pn: mode bmc
+mul_ss_strict_np: mode bmc
+mul_ss_strict_nn: mode bmc
+mulhsu_strict_p: mode bmc
+mulhsu_strict_n: mode bmc
+mulhu_strict: mode bmc
+booth_recode_signed: mode bmc
+booth_recode_unsigned: mode bmc
+booth_scaled_step_signed: mode bmc
+booth_scaled_step_unsigned: mode bmc
+booth_scaled_range_mulh: mode bmc
+booth_scaled_range_mulhsu: mode bmc
+booth_scaled_range_mulhu: mode bmc
+booth_scaled_equiv_mulh: mode bmc
+booth_scaled_equiv_mulhsu: mode bmc
+booth_scaled_equiv_mulhu: mode bmc
+div_invariant_signed_pp: mode bmc
+div_invariant_signed_pn: mode bmc
+div_invariant_signed_np: mode bmc
+div_invariant_signed_nn: mode bmc
+div_invariant_unsigned_pn: mode bmc
+div_invariant_unsigned_nn: mode bmc
+div_invariant_unsigned_pp1: mode bmc
+div_invariant_unsigned_np1: mode bmc
+div_invariant_unsigned_pp0: mode bmc
+div_invariant_unsigned_np0: mode bmc
+div_range_signed: mode bmc
+div_range_unsigned: mode bmc
+div_step_signed: mode bmc
+div_step_unsigned: mode bmc
+div_quotient_recode: mode bmc
+strict_mul_completion: mode cover
+strict_div_completion: mode cover
 
-mul: depth 24
-mulh: depth 24
-mulhsu: depth 24
-mulhu: depth 24
+mul: depth 25
+mulh: depth 25
+mulhsu: depth 25
+mulhu: depth 25
 div: depth 46
 rem: depth 46
 divu: depth 46
 remu: depth 46
 special_cover: depth 46
-mul_full: depth 24
-mulh_full: depth 24
-mulhsu_full: depth 24
-mulhu_full: depth 24
+protocol_safety: depth 50
+protocol_progress: depth 46
+protocol_cover: depth 96
+mul_full: depth 26
+mulh_full: depth 26
+mulhsu_full: depth 26
+mulhu_full: depth 26
+divrem_signed_full: depth 50
+divrem_unsigned_full: depth 50
+mul_full_cover: depth 26
+mulh_full_cover: depth 26
+mulhsu_full_cover: depth 26
+mulhu_full_cover: depth 26
+divrem_signed_full_cover: depth 50
+divrem_unsigned_full_cover: depth 50
+mul_ss_strict_pp: depth 20
+mul_ss_strict_pn: depth 20
+mul_ss_strict_np: depth 20
+mul_ss_strict_nn: depth 20
+mulhsu_strict_p: depth 20
+mulhsu_strict_n: depth 20
+mulhu_strict: depth 20
+booth_recode_signed: depth 2
+booth_recode_unsigned: depth 2
+booth_scaled_step_signed: depth 2
+booth_scaled_step_unsigned: depth 2
+booth_scaled_range_mulh: depth 20
+booth_scaled_range_mulhsu: depth 20
+booth_scaled_range_mulhu: depth 20
+booth_scaled_equiv_mulh: depth 20
+booth_scaled_equiv_mulhsu: depth 20
+booth_scaled_equiv_mulhu: depth 20
+div_invariant_signed_pp: depth 40
+div_invariant_signed_pn: depth 40
+div_invariant_signed_np: depth 40
+div_invariant_signed_nn: depth 40
+div_invariant_unsigned_pn: depth 40
+div_invariant_unsigned_nn: depth 40
+div_invariant_unsigned_pp1: depth 40
+div_invariant_unsigned_np1: depth 40
+div_invariant_unsigned_pp0: depth 40
+div_invariant_unsigned_np0: depth 40
+div_range_signed: depth 40
+div_range_unsigned: depth 40
+div_step_signed: depth 2
+div_step_unsigned: depth 2
+div_quotient_recode: depth 2
+strict_mul_completion: depth 20
+strict_div_completion: depth 40
 
 expect pass
 
 [engines]
-smtbmc boolector
+mul: smtbmc boolector
+mulh: smtbmc boolector
+mulhsu: smtbmc boolector
+mulhu: smtbmc boolector
+div: smtbmc boolector
+rem: smtbmc boolector
+divu: smtbmc boolector
+remu: smtbmc boolector
+special_cover: smtbmc boolector
+protocol_safety: btor btormc
+protocol_progress: btor btormc
+protocol_cover: smtbmc boolector
+mul_full: btor btormc
+mulh_full: btor btormc
+mulhsu_full: btor btormc
+mulhu_full: btor btormc
+divrem_signed_full: btor btormc
+divrem_unsigned_full: btor btormc
+mul_full_cover: smtbmc boolector
+mulh_full_cover: smtbmc boolector
+mulhsu_full_cover: smtbmc boolector
+mulhu_full_cover: smtbmc boolector
+divrem_signed_full_cover: smtbmc boolector
+divrem_unsigned_full_cover: smtbmc boolector
+mul_ss_strict_pp: btor btormc
+mul_ss_strict_pn: btor btormc
+mul_ss_strict_np: btor btormc
+mul_ss_strict_nn: btor btormc
+mulhsu_strict_p: btor btormc
+mulhsu_strict_n: btor btormc
+mulhu_strict: btor btormc
+booth_recode_signed: smtbmc boolector
+booth_recode_unsigned: smtbmc boolector
+booth_scaled_step_signed: smtbmc boolector
+booth_scaled_step_unsigned: smtbmc boolector
+booth_scaled_range_mulh: btor btormc
+booth_scaled_range_mulhsu: btor btormc
+booth_scaled_range_mulhu: btor btormc
+booth_scaled_equiv_mulh: btor btormc
+booth_scaled_equiv_mulhsu: btor btormc
+booth_scaled_equiv_mulhu: btor btormc
+div_invariant_signed_pp: btor btormc
+div_invariant_signed_pn: btor btormc
+div_invariant_signed_np: btor btormc
+div_invariant_signed_nn: btor btormc
+div_invariant_unsigned_pn: btor btormc
+div_invariant_unsigned_nn: btor btormc
+div_invariant_unsigned_pp1: btor btormc
+div_invariant_unsigned_np1: btor btormc
+div_invariant_unsigned_pp0: btor btormc
+div_invariant_unsigned_np0: btor btormc
+div_range_signed: btor btormc
+div_range_unsigned: btor btormc
+div_step_signed: smtbmc boolector
+div_step_unsigned: smtbmc boolector
+div_quotient_recode: smtbmc boolector
+strict_mul_completion: smtbmc boolector
+strict_div_completion: smtbmc boolector
 
 [script]
 read_verilog -formal -sv -DSYNTHESIS Cl1Top_AXI_CACHE_REALMDU.sv
@@ -58,10 +250,55 @@ rem: read_verilog -formal -sv -DMDU_REAL_REM -DMDU_REAL_DIV_TINY_OPERANDS cl1_md
 divu: read_verilog -formal -sv -DMDU_REAL_DIVU -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
 remu: read_verilog -formal -sv -DMDU_REAL_REMU -DMDU_REAL_DIV_TINY_OPERANDS cl1_mdu_real_check.sv
 special_cover: read_verilog -formal -sv -DMDU_REAL_SPECIAL_COVER cl1_mdu_real_check.sv
-mul_full: read_verilog -formal -sv -DMDU_REAL_MUL cl1_mdu_real_check.sv
-mulh_full: read_verilog -formal -sv -DMDU_REAL_MULH cl1_mdu_real_check.sv
-mulhsu_full: read_verilog -formal -sv -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
-mulhu_full: read_verilog -formal -sv -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+protocol_safety: read_verilog -formal -sv -DMDU_REAL_PROTOCOL_CHECK cl1_mdu_real_check.sv
+protocol_progress: read_verilog -formal -sv -DMDU_REAL_PROTOCOL_CHECK -DMDU_REAL_PROTOCOL_PROGRESS cl1_mdu_real_check.sv
+protocol_cover: read_verilog -formal -sv -DMDU_REAL_PROTOCOL_CHECK -DMDU_REAL_PROTOCOL_COVER cl1_mdu_real_check.sv
+mul_full: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MUL cl1_mdu_real_check.sv
+mulh_full: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULH cl1_mdu_real_check.sv
+mulhsu_full: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
+mulhu_full: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+divrem_signed_full: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL cl1_mdu_real_check.sv
+divrem_unsigned_full: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL cl1_mdu_real_check.sv
+mul_full_cover: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MUL cl1_mdu_real_check.sv
+mulh_full_cover: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULH cl1_mdu_real_check.sv
+mulhsu_full_cover: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
+mulhu_full_cover: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+divrem_signed_full_cover: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL cl1_mdu_real_check.sv
+divrem_unsigned_full_cover: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL cl1_mdu_real_check.sv
+mul_ss_strict_pp: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULH -DMDU_REAL_MUL_RS1_POS -DMDU_REAL_MUL_RS2_POS cl1_mdu_real_check.sv
+mul_ss_strict_pn: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULH -DMDU_REAL_MUL_RS1_POS -DMDU_REAL_MUL_RS2_NEG cl1_mdu_real_check.sv
+mul_ss_strict_np: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULH -DMDU_REAL_MUL_RS1_NEG -DMDU_REAL_MUL_RS2_POS cl1_mdu_real_check.sv
+mul_ss_strict_nn: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULH -DMDU_REAL_MUL_RS1_NEG -DMDU_REAL_MUL_RS2_NEG cl1_mdu_real_check.sv
+mulhsu_strict_p: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULHSU -DMDU_REAL_MUL_RS1_POS cl1_mdu_real_check.sv
+mulhsu_strict_n: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULHSU -DMDU_REAL_MUL_RS1_NEG cl1_mdu_real_check.sv
+mulhu_strict: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+booth_recode_signed: read_verilog -formal -sv -DMDU_REAL_BOOTH_RECODE_CHECK -DMDU_REAL_RECODE_SIGNED cl1_mdu_real_check.sv
+booth_recode_unsigned: read_verilog -formal -sv -DMDU_REAL_BOOTH_RECODE_CHECK cl1_mdu_real_check.sv
+booth_scaled_step_signed: read_verilog -formal -sv -DMDU_REAL_SCALED_STEP_CHECK -DMDU_REAL_SCALED_RHS_SIGNED cl1_mdu_real_check.sv
+booth_scaled_step_unsigned: read_verilog -formal -sv -DMDU_REAL_SCALED_STEP_CHECK cl1_mdu_real_check.sv
+booth_scaled_range_mulh: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_RANGE_CHECK -DMDU_REAL_MULH cl1_mdu_real_check.sv
+booth_scaled_range_mulhsu: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_RANGE_CHECK -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
+booth_scaled_range_mulhu: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_RANGE_CHECK -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+booth_scaled_equiv_mulh: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_EQUIV_CHECK -DMDU_REAL_MULH cl1_mdu_real_check.sv
+booth_scaled_equiv_mulhsu: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_EQUIV_CHECK -DMDU_REAL_MULHSU cl1_mdu_real_check.sv
+booth_scaled_equiv_mulhu: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_SCALED_EQUIV_CHECK -DMDU_REAL_MULHU cl1_mdu_real_check.sv
+div_invariant_signed_pp: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_POS -DMDU_REAL_DIV_RS2_POS cl1_mdu_real_check.sv
+div_invariant_signed_pn: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_POS -DMDU_REAL_DIV_RS2_NEG cl1_mdu_real_check.sv
+div_invariant_signed_np: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_NEG -DMDU_REAL_DIV_RS2_POS cl1_mdu_real_check.sv
+div_invariant_signed_nn: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_NEG -DMDU_REAL_DIV_RS2_NEG cl1_mdu_real_check.sv
+div_invariant_unsigned_pn: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_POS -DMDU_REAL_DIV_RS2_NEG cl1_mdu_real_check.sv
+div_invariant_unsigned_nn: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_NEG -DMDU_REAL_DIV_RS2_NEG cl1_mdu_real_check.sv
+div_invariant_unsigned_pp1: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_POS -DMDU_REAL_DIV_RS2_POS -DMDU_REAL_DIV_RS2_BIT30_ONE cl1_mdu_real_check.sv
+div_invariant_unsigned_np1: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_NEG -DMDU_REAL_DIV_RS2_POS -DMDU_REAL_DIV_RS2_BIT30_ONE cl1_mdu_real_check.sv
+div_invariant_unsigned_pp0: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_POS -DMDU_REAL_DIV_RS2_POS -DMDU_REAL_DIV_RS2_BIT30_ZERO cl1_mdu_real_check.sv
+div_invariant_unsigned_np0: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_DIV_RS1_NEG -DMDU_REAL_DIV_RS2_POS -DMDU_REAL_DIV_RS2_BIT30_ZERO cl1_mdu_real_check.sv
+div_range_signed: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_RANGE_CHECK cl1_mdu_real_check.sv
+div_range_unsigned: read_verilog -formal -sv -DMDU_REAL_DIVREM_UNSIGNED_FULL -DMDU_REAL_DIV_RANGE_CHECK cl1_mdu_real_check.sv
+div_step_signed: read_verilog -formal -sv -DMDU_REAL_DIV_STEP_CHECK -DMDU_REAL_DIV_STEP_SIGNED cl1_mdu_real_check.sv
+div_step_unsigned: read_verilog -formal -sv -DMDU_REAL_DIV_STEP_CHECK cl1_mdu_real_check.sv
+div_quotient_recode: read_verilog -formal -sv -DMDU_REAL_DIV_QUOTIENT_RECODE_CHECK cl1_mdu_real_check.sv
+strict_mul_completion: read_verilog -formal -sv -DMDU_REAL_FULL_MUL_CHECK -DMDU_REAL_STRICT_MUL_CHECK -DMDU_REAL_MULH -DMDU_REAL_STRICT_COMPLETION_COVER cl1_mdu_real_check.sv
+strict_div_completion: read_verilog -formal -sv -DMDU_REAL_DIVREM_SIGNED_FULL -DMDU_REAL_DIV_INVARIANT_CHECK -DMDU_REAL_STRICT_COMPLETION_COVER cl1_mdu_real_check.sv
 prep -flatten -nordff -top cl1_mdu_real_check
 chformal -early
 

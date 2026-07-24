@@ -9,8 +9,12 @@ Run the fast microarchitecture suite from `riscv-formal/cores/cl1` with:
 make microarch
 ```
 
+Run only the grouped CSR/EXCP checks with `make microarch-csr` from the same
+directory.
+
 Available targets inside this directory:
 
+- `make run`: run `unit`, `trap-scenarios`, and `trap-model` as one group.
 - `make unit`: direct `Cl1CSR` unit-level state/reference check.
 - `make trap-scenarios`: scenario-driven `Cl1EXCP` + `Cl1CSR` coupled check
   for trap and interrupt CSR side effects.
@@ -49,7 +53,7 @@ Covered CL1 CSR behavior:
   exception-over-interrupt priority, vectored interrupt offset `cause << 2`,
   and `mret` restoration of `mstatus.MIE/MPIE`.
 - The trap model check complements the scenario check with a cycle-by-cycle
-  reference model for the coupled modules. Unlike `csr-trap-scenarios`, it
+  reference model for the coupled modules. Unlike `trap-scenarios`, it
   does not force a fixed setup/event/check schedule; it proves the EXCP
   outputs, CSR-facing control, CSR state outputs, WFI halt outputs, and bore
   observer signals match the reference model across bounded arbitrary input

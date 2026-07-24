@@ -160,6 +160,35 @@ module cl1_idex_stage_check(input clock);
 		end
 	endfunction
 
+	localparam [3:0] MEM_NONE = 4'h0;
+	localparam [3:0] MEM_LB   = 4'h2;
+	localparam [3:0] MEM_LBU  = 4'h3;
+	localparam [3:0] MEM_LH   = 4'h4;
+	localparam [3:0] MEM_LHU  = 4'h5;
+	localparam [3:0] MEM_LW   = 4'h6;
+	localparam [3:0] MEM_SB   = 4'hA;
+	localparam [3:0] MEM_SH   = 4'hC;
+	localparam [3:0] MEM_SW   = 4'hE;
+
+	function legal_wb_mem_type;
+		input [3:0] mem_type;
+		begin
+			case (mem_type)
+			MEM_NONE, MEM_LB, MEM_LBU, MEM_LH, MEM_LHU, MEM_LW,
+			MEM_SB, MEM_SH, MEM_SW: legal_wb_mem_type = 1'b1;
+			default: legal_wb_mem_type = 1'b0;
+			endcase
+		end
+	endfunction
+
+	function legal_lsu_mem_type;
+		input [3:0] mem_type;
+		begin
+			legal_lsu_mem_type = mem_type != MEM_NONE &&
+				legal_wb_mem_type(mem_type);
+		end
+	endfunction
+
 	wire [6:0]  opcode = io_pplIn_bits_inst[6:0];
 	wire [2:0]  funct3 = io_pplIn_bits_inst[14:12];
 	wire [4:0]  rs1 = io_pplIn_bits_inst[19:15];
@@ -229,6 +258,14 @@ module cl1_idex_stage_check(input clock);
 				assert(io_pplOut_bits_inst == io_pplIn_bits_inst);
 				assert(io_pplOut_bits_cInst == io_pplIn_bits_cInst);
 				assert(io_pplOut_bits_isCInst == io_pplIn_bits_isCInst);
+				assert(io_pplOut_bits_wbType != 2'h3);
+				assert(legal_wb_mem_type(io_pplOut_bits_memType));
+				assert(io_pplOut_bits_privInstr == expected_priv_instr);
+				if (|io_pplOut_bits_privInstr) begin
+					assert(io_pplOut_bits_memType == MEM_NONE);
+					assert(!io_pplOut_bits_wen);
+					assert(!io_pplOut_bits_csrWen);
+				end
 			end
 
 			if (io_pplOut_bits_isTrap) begin
@@ -241,6 +278,7 @@ module cl1_idex_stage_check(input clock);
 				assert(active_no_kill);
 				assert(io_memNotOutStanding);
 				assert(!io_pplOut_bits_isTrap);
+				assert(legal_lsu_mem_type(io_mem_bits_memType));
 				assert(io_mem_bits_memType == io_pplOut_bits_memType);
 				assert(io_mem_bits_wdata == io_rs2Value);
 			end
@@ -325,6 +363,10 @@ module cl1_idex_stage_check(input clock);
 			cover(io_stall);
 			cover(io_pplOut_valid);
 			cover(io_mem_valid);
+			cover(io_pplOut_valid & |io_pplOut_bits_privInstr &
+				io_pplOut_bits_memType == MEM_NONE);
+			cover(io_pplOut_valid & io_pplOut_bits_isTrap &
+				|io_pplOut_bits_privInstr);
 			cover(io_icache_req_valid);
 			cover(io_dcache_req_valid);
 			cover(active_no_kill & io_pplIn_bits_ifu_fetch_err & io_pplOut_bits_isTrap);

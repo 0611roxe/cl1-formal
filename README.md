@@ -181,6 +181,21 @@ AXI 快捷目标：
 | `make axi-cache-<group>` | 清理并运行 AXI + Cache 的某个 group |
 | `make axi-cache-summary` | 汇总 `checks_axi_cache/` |
 
+CL1 微架构检查使用分组入口：
+
+| 目标 | 用途 |
+|---|---|
+| `make microarch` | 运行默认模块级微架构套件 |
+| `make microarch-csr` | 运行 CSR 单元、陷阱场景和陷阱模型 |
+| `make microarch-mdu` | 运行 riscv-formal altops MDU 检查 |
+| `make microarch-mdu MDU_MODE=smoke` | 运行缩减操作数真实算术和协议检查 |
+| `make microarch-mdu MDU_MODE=full` | 运行全位宽 DUT/参考模型检查 |
+| `make microarch-mdu MDU_MODE=strict` | 在 full 基础上运行独立算术闭合 |
+| `make clean-microarch` | 清理微架构运行目录 |
+
+开发时可进一步选择 `MDU_MODE=protocol|mul|div|mul-full|div-full`，但不再为这些
+同类任务维护独立的 Make 子目标。
+
 ## 检查规模
 
 | 组 | 内容 | Native | AXI no-cache | AXI + Cache |
@@ -217,7 +232,8 @@ AXI + Cache 的 `fault` 少 1 项，因为默认过滤 `bus_imem_fault_ch0`。�
 | `csrw` / `csr_ill` | 20 | 30 | 30 |
 | `interrupt` | 20 | 34 | 34 |
 | `csrc_any` / `csrc_const` | 1 -> 5 | 1 -> 5 | 1 -> 5 |
-| `bus_*` | 不启用 | 1 -> 30 | 1 -> 30 |
+| `bus_imem` | 不启用 | 1 -> 30 | 1 -> 24 |
+| other `bus_*` | 不启用 | 1 -> 30 | 1 -> 30 |
 | `fault` | 24 | 24 | 24 |
 | `bus_imem_fault` | 不启用 | 1 -> 30 | 默认过滤 |
 | other `bus_*_fault` | 不启用 | 1 -> 30 | 1 -> 30 |
@@ -260,11 +276,13 @@ AXI 配置使用 `axi4_dummy_slave` 和 `rvfi_bus_axi4_observer`：
 - `ar_prot` / `aw_prot` 用于区分 instruction/data 访问。
 - AXI slave 建模 single outstanding read 和 single outstanding write。
 - 普通 ISA/CSR/base 检查使用 zero-delay OKAY response。
-- `bus`、`fault`、`interrupt`、`deadlock`、`cover` 相关目标启用 `CL1_AXI_STRESS_BACKPRESSURE`。
+- `bus`、`fault`、`interrupt` 和 `cover` 相关目标启用 `CL1_AXI_STRESS_BACKPRESSURE`。
 - stress 模式下 AR/AW/W/R/B 都有 bounded nondeterministic delay，当前最大 4 cycle。
 - fault/progress 相关目标启用 `CL1_AXI_FAULT_FORMAL_MEM`，允许 OKAY 或 SLVERR。
 
-`CL1_AXI_FAST_FORMAL_MEM` 在主配置中默认关闭。它可以作为本地 triage 手段缩短运行时间，但不建议在 AXI 主线全局打开，否则会削弱 bounded backpressure 覆盖。若只想降低 AXI + Cache progress 的求解成本，更合理的是只对 `hang` / `liveness` 临时启用 fast memory，而不是影响 `bus` / `fault` / `interrupt` / `cover`。
+`CL1_AXI_FAST_FORMAL_MEM` 不对普通检查全局启用。AXI + Cache 的 `hang` / `liveness`
+单独使用 fast memory 控制 processor-plus-cache progress 的状态空间；`bus` / `fault` /
+`interrupt` / `cover` 仍保留 bounded backpressure。
 
 ### Progress / Interrupt 环境
 
@@ -274,7 +292,7 @@ AXI 配置使用 `axi4_dummy_slave` 和 `rvfi_bus_axi4_observer`：
 - fault-progress 目标允许 memory response 为 OKAY 或 fault。
 - interrupt-progress 目标允许窗口前 interrupt 任意出现。
 - 在 progress 窗口前 quiesce interrupt，避免 permanent interrupt stream 让 deadlock/liveness 语义失真。
-- AXI + Cache 的 liveness trigger 推迟到 cache 冷启动之后，降低 PREUNSAT / vacuous pass 风险。
+- AXI + Cache 的 liveness 在第 96 周期触发，并展开到第 192 周期；该目标检查冷启动后的集成进展，cache 内部任意状态性质由独立 cache-formal 目标覆盖。
 
 ## AXI + Cache 说明
 
@@ -316,7 +334,7 @@ AXI cover 额外要求：
 |---|---|
 | `fence` / `fence.i` | 当前尚未加入原生语义支持；如果要验证 cache/fetch/memory ordering，需要额外建模 |
 | 时间范围 | 当前是 bounded BMC/progress 证明，不是无限时域 liveness 证明 |
-| M 扩展算法 | `RISCV_FORMAL_ALTOPS` 不证明真实乘除算法数据结果 |
+| M 扩展算法 | 三条 ISA/RVFI 主线使用 `RISCV_FORMAL_ALTOPS`；真实乘除算法由独立的 `microarch-mdu` 非 altops 模式证明 |
 | AXI + Cache I-side fault | 默认过滤 `bus_imem_fault_ch0`，需要 cache-aware checker 才能严格恢复 |
 | cache 内部性质 | AXI + Cache 主线不证明 cache 内部 invariant；由 `cache-formal` 独立验证 |
 | 软件对齐约定 | 32-bit 指令要求 32-bit 对齐；FetchAlign RTL workaround 不属于当前 formal 环境假设的一部分 |
@@ -336,6 +354,7 @@ cl1-formal/
         ├── checks_axi_cache.cfg # AXI + Cache 主配置
         ├── wrapper.sv           # CL1 riscv-formal wrapper
         ├── rvfi_bus_axi4_guard.sv
+        ├── microarch/           # CL1 专用模块级与真实 MDU 检查
         ├── Makefile
         └── summary.sh
 ```

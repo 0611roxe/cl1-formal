@@ -179,6 +179,14 @@ module cl1_wb_stage_check(input clock);
 		assume(!io_pplIn_valid || io_pplIn_bits_privInstr == expected_priv_instr);
 
 		if (io_pplIn_valid && io_pplIn_bits_isTrap) begin
+			assume(!io_pplIn_bits_wen);
+			assume(!io_pplIn_bits_csrWen);
+		end
+
+		// IDEX proves that committed privileged instructions carry no ordinary
+		// memory, register, or CSR side effects into WB. Trap metadata may
+		// intentionally overlap and is handled with exception priority.
+		if (io_pplIn_valid && |io_pplIn_bits_privInstr) begin
 			assume(io_pplIn_bits_memType == MEM_NONE);
 			assume(!io_pplIn_bits_wen);
 			assume(!io_pplIn_bits_csrWen);
@@ -243,6 +251,16 @@ module cl1_wb_stage_check(input clock);
 			assert(io_dbg_wb_is_ebrk == (io_pplIn_valid & io_pplIn_bits_privInstr[2]));
 			assert(io_dbg_wb_is_dret == (io_pplIn_valid & io_pplIn_bits_privInstr[0]));
 
+			// Prove the complete WB-to-EXCP producer contract at the stage
+			// boundary; coupled EXCP/CSR checks consume the same event encoding.
+			assert(!(io_toExcp_cmt_ecall & io_toExcp_cmt_mret));
+			assert(!(io_toExcp_cmt_ecall & io_toExcp_cmt_wfi));
+			assert(!(io_toExcp_cmt_mret & io_toExcp_cmt_wfi));
+			assert(!io_toExcp_cmt_ecall || io_toExcp_wb_valid);
+			assert(!io_toExcp_cmt_mret || io_toExcp_wb_valid);
+			assert(!io_toExcp_cmt_wfi || io_toExcp_wb_valid);
+			assert(!io_toExcp_excp_valid || io_toExcp_wb_valid);
+
 			if (active_wait_mem_resp & !mem_fire & !io_flush) begin
 				assert(!io_pplIn_ready);
 				assert(!io_wen);
@@ -268,6 +286,10 @@ module cl1_wb_stage_check(input clock);
 			cover(io_pplIn_valid & io_pplIn_bits_isTrap & io_toExcp_excp_valid);
 			cover(io_pplIn_valid & io_pplIn_bits_privInstr[3] & io_toExcp_cmt_ecall);
 			cover(io_pplIn_valid & io_pplIn_bits_privInstr[1] & io_toExcp_cmt_mret);
+			cover(io_toExcp_wb_valid & (io_toExcp_cmt_ecall |
+				io_toExcp_cmt_mret | io_toExcp_excp_valid));
+			cover(io_toExcp_excp_valid & (io_toExcp_cmt_ecall |
+				io_toExcp_cmt_mret));
 		end
 	end
 

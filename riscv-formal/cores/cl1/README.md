@@ -61,6 +61,7 @@ make axi-cache-summary
 Run progress-focused subsets:
 
 ```bash
+make deadlock-all JOBS=2
 make deadlock JOBS=2
 make axi-deadlock JOBS=2
 make axi-cache-deadlock JOBS=2
@@ -69,16 +70,27 @@ make axi-fault JOBS=2
 make axi-cache-fault JOBS=2
 ```
 
+`deadlock-all` runs the native, AXI no-cache, and AXI-cache `hang` plus
+`liveness_ch0` targets in sequence. The AXI no-cache target retains bounded
+AR/AW/W/R/B backpressure; the cache target uses the zero-delay AXI memory
+profile to keep the processor-plus-cache progress proof tractable.
+
+AXI-cache liveness triggers at cycle 96 and keeps the next-retirement window
+through cycle 192. It uses the same generated SBY flow and default Boolector
+engine as the other checks; `genchecks.py` and its option list are unchanged.
+Cache-internal arbitrary-state progress remains the responsibility of the
+separate cache-formal target.
+
 Run the CL1-specific CSR microarchitecture check:
 
 ```bash
-make csr-microarch
+make microarch-csr
 ```
 
 This is intentionally a core-local module/interface check, not a generic
 RVFI/spec checker. The sources and SBY run output live under
-`microarch/csr/`. `make csr-unit` checks the generated `Cl1CSR` module
-directly; trap-scenario and trap-model targets check coupled CSR/EXCP behavior.
+`microarch/csr/`. The grouped target checks the generated `Cl1CSR` module
+directly and runs the coupled CSR/EXCP trap scenarios and reference model.
 These microarchitecture checks are kept separate from the architectural
 RVFI/spec flow.
 
@@ -86,6 +98,36 @@ The default `make microarch` target runs BMC for every included module and a
 paired cover task for each checker that declares cover points. A checker passes
 only when its assertions hold to the configured depth and every declared cover
 point is reachable within that depth.
+
+MDU checks use one grouped entry point:
+
+```bash
+make microarch-mdu                         # formal altops
+make microarch-mdu MDU_MODE=smoke          # reduced real arithmetic + protocol
+make microarch-mdu MDU_MODE=full           # full-width DUT/reference proof
+make microarch-mdu MDU_MODE=strict         # full proof + arithmetic closure
+```
+
+`MDU_MODE=full` is a separate heavy mode for arbitrary 32-bit non-altops
+multiplication and division. It is not included in `microarch` or in the
+architectural RVFI/spec check groups.
+
+`MDU_MODE=strict` adds independent full-width arithmetic closure to `full`.
+It is also kept separate from `microarch` and all
+architectural RVFI/spec groups. It includes signed and unsigned actual-state
+division invariants, registered reference-result mappings, and reference-only
+arithmetic cones. It proves strict multiplier/divider completion reachability
+and rejects checker-side multiply/divide/modulo cells. This target has no
+built-in timeout; runtime depends on the solver, host, and selected `JOBS`.
+
+The `smoke`, `full`, and `strict` modes include the corresponding protocol
+safety, bounded-progress, and cover tasks. The SBY file currently defines 58
+small tasks so each opcode, arithmetic partition, and cover goal remains
+independently selectable.
+
+See [`microarch/README.md`](microarch/README.md) for entry points and
+[`microarch/COVERAGE.md`](microarch/COVERAGE.md) for proof boundaries and
+assumptions.
 
 The microarchitecture Make entry points regenerate `Cl1Top_AXI_CACHE.sv` from
 the current `CL1_Core` sources before running, so an existing copied DUT cannot
@@ -97,9 +139,11 @@ silently make a source change appear to pass against stale RTL.
 - WFI is excluded only for successful instruction fetch responses, because WFI is an architectural wait state.
 - Native and AXI `fault_ch0` check RVFI fault semantics: trap, `rvfi_mem_fault`, fault masks, and `mcause`.
 - Native main `hang` / `liveness` allows arbitrary native response errors and enables interrupt-progress.
-- AXI main `hang` / `liveness` allows OKAY or SLVERR responses, enables interrupt-progress, and uses bounded AR/AW/W/R/B backpressure.
-- AXI bus/fault/progress/int/cover checks use a single-outstanding dummy slave with bounded backpressure; ordinary ISA/CSR/base checks keep zero-delay OKAY responses to avoid unnecessary state-space cost.
-- AXI cover requires read and write bus activity plus AR/AW/W/R/B delay coverage, so the stress environment is not vacuous.
+- AXI no-cache `hang` / `liveness` allows OKAY or SLVERR responses, enables interrupt-progress, and uses bounded AR/AW/W/R/B backpressure.
+- AXI no-cache bus/fault/progress/int/cover checks use a single-outstanding dummy slave with bounded backpressure; ordinary ISA/CSR/base checks keep zero-delay OKAY responses to avoid unnecessary state-space cost.
+- AXI + cache `hang` / `liveness` keeps the same fault and interrupt-progress semantics but uses the fast zero-delay AXI memory profile.
+- AXI no-cache cover requires read and write bus activity plus AR/AW/W/R/B delay coverage, so the stress environment is not vacuous.
+- AXI + cache cover retains bounded AR/AW/W/R/B backpressure and independently reaches data-read, data-write, and combined read/write retirement traces.
 - AXI no-cache keeps all four bus-fault checkers. AXI + cache keeps `fault_ch0` and the three data-side bus-fault checkers, but filters `bus_imem_fault_ch0` because I-cache refill/fill makes external instruction faults non-one-to-one with retire PCs without extra cache state visibility.
 - AXI + cache checks observe the processor with ICache/DCache enabled through RVFI and external AXI transactions. Cache-internal invariants are kept in the separate `cache-formal full` target.
 - Interrupt-progress allows arbitrary interrupts before the progress window, then quiesces irq lines so progress cannot be satisfied or defeated by a permanent interrupt stream.
@@ -110,4 +154,4 @@ silently make a source change appear to pass against stale RTL.
 
 - `fence` / `fence.i` do not yet have native formal semantics in this setup.
 - The checks are bounded BMC/progress checks, not unbounded liveness proofs.
-- `RISCV_FORMAL_ALTOPS` checks M-extension control and retirement behavior without proving the real multiply/divide datapath result.
+- The ISA/RVFI configurations use `RISCV_FORMAL_ALTOPS`; use the optional non-altops `microarch-mdu` modes for real multiply/divide datapath proofs.

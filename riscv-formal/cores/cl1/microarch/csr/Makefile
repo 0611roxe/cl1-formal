@@ -9,31 +9,16 @@ prepare-rtl:
 run: prepare-rtl unit trap-scenarios trap-model
 
 unit: prepare-rtl
-	@set +e; \
-	sby -f cl1_csr_unit.sby $(SBY_TASKS); \
-	sby_rc=$$?; \
-	check_rc=0; \
-	sh ../check_formal_cells.sh cl1_csr_unit_bmc/model/design.il cl1_csr_unit_cover/model/design.il || check_rc=$$?; \
-	if [ "$$sby_rc" -ne 0 ]; then exit $$sby_rc; fi; \
-	exit $$check_rc
+	sby -f cl1_csr_unit.sby $(SBY_TASKS)
+	sh ../check_formal_cells.sh cl1_csr_unit_bmc/model/design.il cl1_csr_unit_cover/model/design.il
 
 trap-scenarios: prepare-rtl
-	@set +e; \
-	sby -f cl1_csr_trap_scenarios.sby bmc; \
-	sby_rc=$$?; \
-	check_rc=0; \
-	sh ../check_formal_cells.sh cl1_csr_trap_scenarios_bmc/model/design.il - || check_rc=$$?; \
-	if [ "$$sby_rc" -ne 0 ]; then exit $$sby_rc; fi; \
-	exit $$check_rc
+	sby -f cl1_csr_trap_scenarios.sby bmc
+	sh ../check_formal_cells.sh cl1_csr_trap_scenarios_bmc/model/design.il -
 
 trap-model: prepare-rtl
-	@set +e; \
-	sby -f cl1_csr_trap_model.sby bmc; \
-	sby_rc=$$?; \
-	check_rc=0; \
-	sh ../check_formal_cells.sh cl1_csr_trap_model_bmc/model/design.il - || check_rc=$$?; \
-	if [ "$$sby_rc" -ne 0 ]; then exit $$sby_rc; fi; \
-	exit $$check_rc
+	sby -f cl1_csr_trap_model.sby bmc
+	sh ../check_formal_cells.sh cl1_csr_trap_model_bmc/model/design.il -
 
 clean:
 	rm -rf cl1_csr_unit/ cl1_csr_unit_bmc/ cl1_csr_unit_cover/ \

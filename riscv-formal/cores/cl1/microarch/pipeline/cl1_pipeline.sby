@@ -1,0 +1,115 @@
+[tasks]
+bmc
+cover
+
+[options]
+bmc: mode bmc
+cover: mode cover
+expect pass
+bmc: depth 24
+cover: depth 48
+
+[engines]
+smtbmc boolector
+
+[script]
+read_verilog -formal -sv -DSYNTHESIS Cl1Top_AXI_CACHE.sv
+read_verilog -formal -sv -DCL1_PIPELINE_BASE cl1_pipeline_check.sv
+hierarchy -top cl1_pipeline_base
+proc
+setattr -set keep 1 \
+    Cl1Core/_ifStage_io_pplOut_bits_muldiv_b2b \
+    Cl1Core/idStage_io_pplIn_bits_r_muldiv_b2b \
+    Cl1IDEXStage/io_pplIn_bits_muldiv_b2b \
+    Cl1Core/_idStage_io_pplOut_bits_cInst \
+    Cl1Core/_idStage_io_pplOut_bits_isCInst \
+    Cl1Core/_idStage_io_pplOut_bits_dx_ready \
+    Cl1Core/wbStage_io_pplIn_bits_r_cInst \
+    Cl1Core/wbStage_io_pplIn_bits_r_isCInst \
+    Cl1Core/wbStage_io_pplIn_bits_r_dx_ready \
+    Cl1WBStage/io_pplIn_bits_cInst \
+    Cl1WBStage/io_pplIn_bits_isCInst \
+    Cl1WBStage/io_pplIn_bits_dx_ready
+prep -flatten -nordff -top cl1_pipeline_base
+select -clear
+select -module cl1_pipeline_base
+add -output uarch_if_out_valid 1
+add -output uarch_if_out_ready 1
+add -output uarch_if_out_payload 116
+add -output uarch_dx_in_valid 1
+add -output uarch_dx_in_ready 1
+add -output uarch_dx_in_payload 116
+add -output uarch_dx_out_valid 1
+add -output uarch_dx_out_ready 1
+add -output uarch_dx_out_payload 200
+add -output uarch_wb_in_valid 1
+add -output uarch_wb_in_ready 1
+add -output uarch_wb_in_payload 200
+add -output uarch_irq_drain_stall 1
+add -output uarch_pipe_flush 1
+cd cl1_pipeline_base
+connect -set uarch_if_out_valid \dut.ifStage.io_pplOut_valid
+connect -set uarch_if_out_ready \dut.ifStage.io_pplOut_ready
+connect -set uarch_if_out_payload[115] \dut.ifStage.io_pplOut_bits_muldiv_b2b
+connect -set uarch_if_out_payload[114:83] \dut.ifStage.io_pplOut_bits_pc
+connect -set uarch_if_out_payload[82:51] \dut.ifStage.io_pplOut_bits_inst
+connect -set uarch_if_out_payload[50:19] \dut.ifStage.io_pplOut_bits_prdt_taken
+connect -set uarch_if_out_payload[18:3] \dut.ifStage.io_pplOut_bits_cInst
+connect -set uarch_if_out_payload[2] \dut.ifStage.io_pplOut_bits_isCInst
+connect -set uarch_if_out_payload[1] \dut.ifStage.io_pplOut_bits_rvcIllegal
+connect -set uarch_if_out_payload[0] \dut.ifStage.io_pplOut_bits_ifu_fetch_err
+connect -set uarch_dx_in_valid \dut.idStage.io_pplIn_valid
+connect -set uarch_dx_in_ready \dut.idStage.io_pplIn_ready
+connect -set uarch_dx_in_payload[115] \dut.idStage.io_pplIn_bits_muldiv_b2b
+connect -set uarch_dx_in_payload[114:83] \dut.idStage.io_pplIn_bits_pc
+connect -set uarch_dx_in_payload[82:51] \dut.idStage.io_pplIn_bits_inst
+connect -set uarch_dx_in_payload[50:19] \dut.idStage.io_pplIn_bits_prdt_taken
+connect -set uarch_dx_in_payload[18:3] \dut.idStage.io_pplIn_bits_cInst
+connect -set uarch_dx_in_payload[2] \dut.idStage.io_pplIn_bits_isCInst
+connect -set uarch_dx_in_payload[1] \dut.idStage.io_pplIn_bits_rvcIllegal
+connect -set uarch_dx_in_payload[0] \dut.idStage.io_pplIn_bits_ifu_fetch_err
+connect -set uarch_dx_out_valid \dut.idStage.io_pplOut_valid
+connect -set uarch_dx_out_ready \dut.idStage.io_pplOut_ready
+connect -set uarch_dx_out_payload[199:184] \dut.idStage.io_pplOut_bits_cInst
+connect -set uarch_dx_out_payload[183] \dut.idStage.io_pplOut_bits_isCInst
+connect -set uarch_dx_out_payload[182] \dut.idStage.io_pplOut_bits_dx_ready
+connect -set uarch_dx_out_payload[181:180] \dut.idStage.io_pplOut_bits_wbType
+connect -set uarch_dx_out_payload[179:148] \dut.idStage.io_pplOut_bits_rdWdat
+connect -set uarch_dx_out_payload[147:116] \dut.idStage.io_pplOut_bits_csrWdat
+connect -set uarch_dx_out_payload[115] \dut.idStage.io_pplOut_bits_csrWen
+connect -set uarch_dx_out_payload[114:111] \dut.idStage.io_pplOut_bits_memType
+connect -set uarch_dx_out_payload[110:79] \dut.idStage.io_pplOut_bits_pc
+connect -set uarch_dx_out_payload[78:74] \dut.idStage.io_pplOut_bits_privInstr
+connect -set uarch_dx_out_payload[73:42] \dut.idStage.io_pplOut_bits_inst
+connect -set uarch_dx_out_payload[41] \dut.idStage.io_pplOut_bits_isTrap
+connect -set uarch_dx_out_payload[40:33] \dut.idStage.io_pplOut_bits_trapCode
+connect -set uarch_dx_out_payload[32:1] \dut.idStage.io_pplOut_bits_trapValue
+connect -set uarch_dx_out_payload[0] \dut.idStage.io_pplOut_bits_wen
+connect -set uarch_wb_in_valid \dut.wbStage.io_pplIn_valid
+connect -set uarch_wb_in_ready \dut.wbStage.io_pplIn_ready
+connect -set uarch_wb_in_payload[199:184] \dut.wbStage.io_pplIn_bits_cInst
+connect -set uarch_wb_in_payload[183] \dut.wbStage.io_pplIn_bits_isCInst
+connect -set uarch_wb_in_payload[182] \dut.wbStage.io_pplIn_bits_dx_ready
+connect -set uarch_wb_in_payload[181:180] \dut.wbStage.io_pplIn_bits_wbType
+connect -set uarch_wb_in_payload[179:148] \dut.wbStage.io_pplIn_bits_rdWdat
+connect -set uarch_wb_in_payload[147:116] \dut.wbStage.io_pplIn_bits_csrWdat
+connect -set uarch_wb_in_payload[115] \dut.wbStage.io_pplIn_bits_csrWen
+connect -set uarch_wb_in_payload[114:111] \dut.wbStage.io_pplIn_bits_memType
+connect -set uarch_wb_in_payload[110:79] \dut.wbStage.io_pplIn_bits_pc
+connect -set uarch_wb_in_payload[78:74] \dut.wbStage.io_pplIn_bits_privInstr
+connect -set uarch_wb_in_payload[73:42] \dut.wbStage.io_pplIn_bits_inst
+connect -set uarch_wb_in_payload[41] \dut.wbStage.io_pplIn_bits_isTrap
+connect -set uarch_wb_in_payload[40:33] \dut.wbStage.io_pplIn_bits_trapCode
+connect -set uarch_wb_in_payload[32:1] \dut.wbStage.io_pplIn_bits_trapValue
+connect -set uarch_wb_in_payload[0] \dut.wbStage.io_pplIn_bits_wen
+connect -set uarch_irq_drain_stall \dut.excp.io_ifu_stall
+connect -set uarch_pipe_flush \dut.pipe_flush
+cd ..
+read_verilog -formal -sv -DCL1_PIPELINE_POST cl1_pipeline_check.sv
+prep -flatten -nordff -top cl1_pipeline_check
+
+chformal -early
+
+[files]
+cl1_pipeline_check.sv
+../../Cl1Top_AXI_CACHE.sv

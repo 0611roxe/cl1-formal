@@ -204,23 +204,6 @@ module cl1_lsu_check(input clock);
 	end
 
 	always @(posedge clock) begin
-		if (past_valid && !$past(reset)) begin
-			if ($past(io_in_req_valid & !io_in_req_ready)) begin
-				assume(io_in_req_valid);
-				assume(io_in_req_bits_memType == $past(io_in_req_bits_memType));
-				assume(io_in_req_bits_addr == $past(io_in_req_bits_addr));
-				assume(io_in_req_bits_wdata == $past(io_in_req_bits_wdata));
-			end
-
-			if ($past(io_out_rsp_valid & !io_out_rsp_ready)) begin
-				assume(io_out_rsp_valid);
-				assume(io_out_rsp_bits_data == $past(io_out_rsp_bits_data));
-				assume(io_out_rsp_bits_err == $past(io_out_rsp_bits_err));
-			end
-		end
-	end
-
-	always @(posedge clock) begin
 		if (!reset) begin
 			assert(out_req_fire == in_req_fire);
 			if (io_out_req_valid) begin
