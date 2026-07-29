@@ -11,7 +11,7 @@ make -C cache-formal turnover # 证明并覆盖 DCache response/request 同周�
 make -C cache-formal backpressure # 证明 I/D hit/refill response 背压稳定性
 make -C cache-formal control # 运行 invalid/clean/refetch/clean-writeback BMC
 make -C cache-formal sanity # 运行 control 场景非空 cover
-make -C cache-formal full   # 运行小几何完整回归
+make -C cache-formal full   # 运行小几何完整回归，包含 160-cycle 数据 safety
 make -C cache-formal full-geometry # 以实际 128-index 几何运行 safety/control/sanity
 make -C cache-formal status # 汇总已有结果
 make -C cache-formal check-full # 要求小几何完整任务全部为当前版本 PASS

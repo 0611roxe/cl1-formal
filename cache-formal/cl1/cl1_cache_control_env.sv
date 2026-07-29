@@ -77,6 +77,7 @@ module cl1_cache_control_env #(
   wire [7:0]  ar_len;
   wire [2:0]  ar_size;
   wire [1:0]  ar_burst;
+  wire [2:0]  ar_prot;
 
   wire        r_valid;
   wire        r_ready;
@@ -184,6 +185,7 @@ module cl1_cache_control_env #(
     .io_master_ar_bits_arlen     (ar_len),
     .io_master_ar_bits_arsize    (ar_size),
     .io_master_ar_bits_arburst   (ar_burst),
+    .io_master_ar_bits_arprot    (ar_prot),
 
     .io_master_r_ready           (r_ready),
     .io_master_r_valid           (r_valid),
@@ -314,6 +316,7 @@ module cl1_cache_control_env #(
     .ar_len  (ar_len),
     .ar_size (ar_size),
     .ar_burst(ar_burst),
+    .ar_prot (ar_prot),
     .r_valid (r_valid),
     .r_ready (r_ready),
     .r_last  (r_last)

@@ -58,6 +58,7 @@ module cache_check #(
   input  wire [AXI_LEN_WIDTH-1:0]  ar_len,
   input  wire [2:0]                ar_size,
   input  wire [1:0]                ar_burst,
+  input  wire [2:0]                ar_prot,
 
   output wire                      r_valid,
   input  wire                      r_ready,
@@ -135,10 +136,16 @@ module cache_check #(
   reg        dc_turnover_wen;
   reg        dc_turnover_cache;
 
+  reg        ic_pending;
+  reg [ADDR_WIDTH-1:0] ic_pending_addr;
+  reg        rd_instr;
+
   reg [DATA_WIDTH-1:0] mem_line_data [0:LINE_WORDS-1];
-  reg [DATA_WIDTH-1:0] cache_line_data [0:LINE_WORDS-1];
-  reg [LINE_WORDS-1:0] cache_line_known;
-  reg [LINE_WORDS-1:0] cache_line_dirty;
+  reg [DATA_WIDTH-1:0] icache_line_data [0:LINE_WORDS-1];
+  reg [DATA_WIDTH-1:0] dcache_line_data [0:LINE_WORDS-1];
+  reg [LINE_WORDS-1:0] icache_line_known;
+  reg [LINE_WORDS-1:0] dcache_line_known;
+  reg [LINE_WORDS-1:0] dcache_line_dirty;
   reg                  seen_ic_req;
   reg                  seen_ic_rsp;
   reg                  seen_dc_load;
@@ -146,6 +153,14 @@ module cache_check #(
   reg                  seen_watch_line_load;
   reg                  seen_watch_line_store;
   reg                  seen_watch_line_refill;
+  reg                  seen_watch_ic_refill;
+  reg                  seen_watch_dc_refill;
+  reg                  seen_watch_ic_refill_rsp;
+  reg                  seen_watch_dc_refill_rsp;
+  reg                  seen_watch_partial_store;
+  reg [ADDR_WIDTH-1:0] seen_watch_partial_store_addr;
+  reg                  seen_watch_partial_store_load;
+  reg                  seen_watch_line_writeback;
   reg                  seen_dc_turnover;
   reg                  seen_ic_rsp_stall;
   reg                  seen_ic_refill_stall;
@@ -192,6 +207,16 @@ module cache_check #(
         read_word = mem_line_data[line_word_index(addr)];
       else
         read_word = cf_seed_word(addr);
+    end
+  endfunction
+
+  function automatic [0:0] same_word(
+    input [ADDR_WIDTH-1:0] lhs,
+    input [ADDR_WIDTH-1:0] rhs
+  );
+    begin
+      same_word = lhs[ADDR_WIDTH-1:WORD_OFFSET_LSB] ==
+                  rhs[ADDR_WIDTH-1:WORD_OFFSET_LSB];
     end
   endfunction
 
@@ -254,6 +279,30 @@ module cache_check #(
         else
           assume (ic_rsp_ready);
       end
+    end
+  end
+`endif
+
+`ifdef CACHE_FORMAL_DATA_SANITY
+  always @* begin
+    if (!reset) begin
+      assume (!ic_req_valid);
+      assume (ic_rsp_ready);
+      assume (dc_rsp_ready);
+      assume (aw_ready_any);
+      assume (w_ready_any);
+      assume (ar_ready_any);
+      assume (!b_delay_any);
+      assume (!r_delay_any);
+      assume (!force_aw_wait_any);
+      assume (!force_w_wait_any);
+      assume (!force_ar_wait_any);
+      assume (!force_b_wait_any);
+      assume (!force_r_wait_any);
+      if (dc_pending)
+        assume (!dc_req_valid || dc_rsp_fire);
+      else
+        assume (dc_req_valid);
     end
   end
 `endif
@@ -414,6 +463,7 @@ module cache_check #(
     .ar_len  (ar_len),
     .ar_size (ar_size),
     .ar_burst(ar_burst),
+    .ar_prot (ar_prot),
     .r_valid (r_valid),
     .r_ready (r_ready),
     .r_last  (r_last)
@@ -465,6 +515,9 @@ module cache_check #(
   always @(posedge clock) begin
     integer word_index;
     if (reset) begin
+      ic_pending <= 1'b0;
+      ic_pending_addr <= {ADDR_WIDTH{1'b0}};
+      rd_instr <= 1'b0;
       dc_pending <= 1'b0;
       dc_pending_addr <= {ADDR_WIDTH{1'b0}};
       dc_pending_data <= {DATA_WIDTH{1'b0}};
@@ -479,10 +532,12 @@ module cache_check #(
       dc_turnover_cache <= 1'b0;
       for (word_index = 0; word_index < LINE_WORDS; word_index = word_index + 1) begin
         mem_line_data[word_index] <= cf_seed_word(watch_word_addr(word_index));
-        cache_line_data[word_index] <= cf_seed_word(watch_word_addr(word_index));
+        icache_line_data[word_index] <= cf_seed_word(watch_word_addr(word_index));
+        dcache_line_data[word_index] <= cf_seed_word(watch_word_addr(word_index));
       end
-      cache_line_known <= {LINE_WORDS{1'b1}};
-      cache_line_dirty <= {LINE_WORDS{1'b0}};
+      icache_line_known <= {LINE_WORDS{1'b1}};
+      dcache_line_known <= {LINE_WORDS{1'b1}};
+      dcache_line_dirty <= {LINE_WORDS{1'b0}};
       seen_ic_req <= 1'b0;
       seen_ic_rsp <= 1'b0;
       seen_dc_load <= 1'b0;
@@ -490,6 +545,14 @@ module cache_check #(
       seen_watch_line_load <= 1'b0;
       seen_watch_line_store <= 1'b0;
       seen_watch_line_refill <= 1'b0;
+      seen_watch_ic_refill <= 1'b0;
+      seen_watch_dc_refill <= 1'b0;
+      seen_watch_ic_refill_rsp <= 1'b0;
+      seen_watch_dc_refill_rsp <= 1'b0;
+      seen_watch_partial_store <= 1'b0;
+      seen_watch_partial_store_addr <= {ADDR_WIDTH{1'b0}};
+      seen_watch_partial_store_load <= 1'b0;
+      seen_watch_line_writeback <= 1'b0;
       seen_dc_turnover <= 1'b0;
       seen_ic_rsp_stall <= 1'b0;
       seen_ic_refill_stall <= 1'b0;
@@ -509,6 +572,26 @@ module cache_check #(
       seen_b_delay <= 1'b0;
       seen_r_delay <= 1'b0;
     end else begin
+      if (ic_rsp_fire)
+        ic_pending <= 1'b0;
+      if (ic_req_fire) begin
+        ic_pending <= 1'b1;
+        ic_pending_addr <= ic_req_addr;
+      end
+
+      if (ar_fire)
+        rd_instr <= ar_prot[2];
+      else if (r_fire && r_last)
+        rd_instr <= 1'b0;
+
+      if (aw_fire && is_watch_line(aw_addr) && aw_len == LINE_WORDS - 1)
+        assert (|dcache_line_dirty);
+
+      // A dirty cached copy must be written back before the same DCache line
+      // can be refilled. ICache refills remain independent until fence.i.
+      if (ar_fire && !ar_prot[2] && is_watch_line(ar_addr))
+        assert (!(|dcache_line_dirty));
+
       if (dc_turnover_check_pending) begin
         assert (dc_pending);
         assert (dc_pending_addr == dc_turnover_addr);
@@ -544,28 +627,70 @@ module cache_check #(
       if (dc_rsp_fire) begin
         if (dc_pending_cache && is_watch_line(dc_pending_addr)) begin
           if (dc_pending_wen) begin
-            cache_line_data[line_word_index(dc_pending_addr)] <=
-              cf_merge_mask(cache_line_data[line_word_index(dc_pending_addr)], dc_pending_data, dc_pending_mask);
-            cache_line_known[line_word_index(dc_pending_addr)] <= 1'b1;
-            cache_line_dirty[line_word_index(dc_pending_addr)] <= 1'b1;
+            dcache_line_data[line_word_index(dc_pending_addr)] <=
+              cf_merge_mask(dcache_line_data[line_word_index(dc_pending_addr)], dc_pending_data, dc_pending_mask);
+            dcache_line_known[line_word_index(dc_pending_addr)] <= 1'b1;
+            dcache_line_dirty[line_word_index(dc_pending_addr)] <= 1'b1;
             seen_watch_line_store <= 1'b1;
-          end else if (cache_line_known[line_word_index(dc_pending_addr)]) begin
+            if (dc_pending_mask != {STRB_WIDTH{1'b1}}) begin
+              seen_watch_partial_store <= 1'b1;
+              seen_watch_partial_store_addr <= dc_pending_addr;
+            end
+          end else if (dcache_line_known[line_word_index(dc_pending_addr)]) begin
             assert (cf_merge_mask({DATA_WIDTH{1'b0}}, dc_rsp_data, dc_pending_mask) ==
                     cf_merge_mask({DATA_WIDTH{1'b0}},
-                                  cache_line_data[line_word_index(dc_pending_addr)],
+                                  dcache_line_data[line_word_index(dc_pending_addr)],
                                   dc_pending_mask));
             seen_watch_line_load <= 1'b1;
+            if (seen_watch_partial_store && same_word(dc_pending_addr, seen_watch_partial_store_addr))
+              seen_watch_partial_store_load <= 1'b1;
+            if (seen_watch_dc_refill)
+              seen_watch_dc_refill_rsp <= 1'b1;
           end
         end
       end
 
       if (w_fire && is_watch_line(wr_addr)) begin
-        if (cache_line_known[line_word_index(wr_addr)])
-          assert (cf_merge_mask({DATA_WIDTH{1'b0}}, w_data, w_strb) ==
-                  cf_merge_mask({DATA_WIDTH{1'b0}}, cache_line_data[line_word_index(wr_addr)], w_strb));
+        if (wr_len == LINE_WORDS - 1) begin
+          assert (w_strb == {STRB_WIDTH{1'b1}});
+          if (dcache_line_known[line_word_index(wr_addr)])
+            assert (w_data == dcache_line_data[line_word_index(wr_addr)]);
+        end
         mem_line_data[line_word_index(wr_addr)] <=
           cf_merge_mask(mem_line_data[line_word_index(wr_addr)], w_data, w_strb);
-        cache_line_dirty[line_word_index(wr_addr)] <= 1'b0;
+        if (wr_len == LINE_WORDS - 1 && w_last) begin
+          dcache_line_dirty <= {LINE_WORDS{1'b0}};
+          seen_watch_line_writeback <= 1'b1;
+        end
+      end
+
+      if (r_fire && is_watch_line(rd_addr)) begin
+        if (rd_instr) begin
+          icache_line_data[line_word_index(rd_addr)] <= r_data;
+          icache_line_known[line_word_index(rd_addr)] <= 1'b1;
+          seen_watch_ic_refill <= 1'b1;
+        end else begin
+          if (dc_rsp_fire && dc_pending_wen &&
+              same_word(rd_addr, dc_pending_addr))
+            dcache_line_data[line_word_index(rd_addr)] <=
+              cf_merge_mask(r_data, dc_pending_data, dc_pending_mask);
+          else
+            dcache_line_data[line_word_index(rd_addr)] <= r_data;
+          dcache_line_known[line_word_index(rd_addr)] <= 1'b1;
+          dcache_line_dirty[line_word_index(rd_addr)] <=
+            dc_rsp_fire && dc_pending_wen && same_word(rd_addr, dc_pending_addr);
+          seen_watch_dc_refill <= 1'b1;
+        end
+      end
+
+      if (ic_rsp_fire && is_watch_line(ic_pending_addr) &&
+          icache_line_known[line_word_index(ic_pending_addr)]) begin
+        if (r_fire && rd_instr && same_word(rd_addr, ic_pending_addr))
+          assert (ic_rsp_data == r_data);
+        else
+          assert (ic_rsp_data == icache_line_data[line_word_index(ic_pending_addr)]);
+        if (seen_watch_ic_refill)
+          seen_watch_ic_refill_rsp <= 1'b1;
       end
 
       if (ic_req_fire)
@@ -623,6 +748,8 @@ module cache_check #(
     if (!reset) begin
       assert (!ic_rsp_err);
       assert (!dc_rsp_err);
+      if (ic_rsp_valid)
+        assert (ic_pending);
       if (dc_rsp_valid)
         assert (dc_pending);
     end
@@ -633,6 +760,9 @@ module cache_check #(
     if (!reset) begin
 `ifdef CACHE_FORMAL_TURNOVER
       cover (seen_dc_turnover);
+`elsif CACHE_FORMAL_DATA_SANITY
+      cover (seen_watch_partial_store_load);
+      cover (seen_watch_line_writeback);
 `elsif CACHE_FORMAL_BACKPRESSURE
       cover (seen_ic_refill_stall && seen_ic_refill_resume);
       cover (seen_ic_hit_stall && seen_ic_hit_resume);
@@ -645,6 +775,9 @@ module cache_check #(
       cover (seen_watch_line_load);
       cover (seen_watch_line_store);
       cover (seen_watch_line_refill);
+      cover (seen_watch_ic_refill_rsp);
+      cover (seen_watch_dc_refill_rsp);
+      cover (seen_watch_partial_store_load);
       cover (seen_dc_turnover);
       cover (seen_aw_backpressure);
       cover (seen_w_backpressure);

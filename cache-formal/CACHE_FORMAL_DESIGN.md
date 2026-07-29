@@ -60,12 +60,19 @@ CL1 特有补充限制在 `cl1/` 下。
 公共层选择一条 `anyconst` watched line，并维护 line 内每个 word 的参考状态：
 
 - AXI read refill 返回 deterministic memory model 数据。
-- watched line 上的 cached store 按 byte mask 更新 cache 参考值。
-- 后续 watched line load 必须匹配 cache 参考值。
-- watched line writeback 的每个 W beat 必须匹配 cache 参考值，并更新 memory 参考值。
+- 使用 `ARPROT[2]` 区分 ICache 和 DCache refill，并分别更新两份 cache 参考状态。
+- ICache refill 后的后续 fetch response 必须匹配 ICache 参考值；DCache store 不会在
+  没有 `fence.i` 的情况下被错误地传播到 ICache 参考状态。
+- watched line 上的 cached store 按 byte mask 更新 DCache 参考值，后续 load 必须匹配
+  合并后的字节数据。
+- dirty watched line 在 DCache 再次 refill 前必须先完成 line writeback。
+- watched line writeback 必须是 full-strobe line burst，每个 W beat 必须匹配对应的
+  DCache word，并同步更新 memory 参考值。
 
 这不是完整内存一致性模型，但能覆盖任意符号 line 上的 load/store/refill/writeback
-数据路径。
+数据路径。上述功能性质只在真实 request/response/AXI handshake 和参考 word 已知时触发；
+checker 不通过固定请求地址、固定命中结果或强制 refill 建立功能结论。对应 cover 独立确认
+I/D refill 后访问、partial store 后 load 和完整 line writeback 路径可达。
 
 ## 4. CL1 补充 checker
 
@@ -77,6 +84,8 @@ CL1 特有补充限制在 `cl1/` 下。
   同时成立。
 - replacement writeback 必须是 4-beat line burst，地址、mask、len、size、last
   符合 line writeback 语义。
+- replacement 的内部 CacheBus writeback payload 在 backpressure 时保持稳定，首个已接受
+  writeback beat 与随后外部 AXI AW 的地址和 burst 属性一致。
 
 control 专项覆盖：
 
@@ -89,6 +98,10 @@ control 专项覆盖：
 
 每个 control BMC 都有对应 `_sanity` cover。sanity 只证明场景路径非空，避免
 vacuous pass；功能性结论仍以对应 BMC task 为准。
+
+`data_sanity` 同样不承担功能证明。它只关闭 AXI delay、保持 response ready，并让上游按
+single-outstanding 契约连续提供任意合法 DCache 请求；地址、读写操作和 replacement way
+仍由求解器选择。主 `cache` / `cache_full` checker 不使用这些场景约束。
 
 ## 5. AXI 外存模型
 
@@ -133,7 +146,7 @@ Make 目标：
 | 目标 | 内容 |
 | --- | --- |
 | `make all JOBS=8` | 主 cache safety + 主 cover |
-| `make full JOBS=8` | 小几何 `prove + turnover + backpressure + control + sanity + cover` |
+| `make full JOBS=8` | 小几何 `cache + cache_full + turnover + backpressure + data_sanity + control + sanity + cover` |
 | `make full-geometry JOBS=8` | `IDXW=7` 下运行 `cache_full + control + sanity` |
 
 当前 task：
@@ -141,12 +154,13 @@ Make 目标：
 | Task | Mode | Depth | 目标 |
 | --- | --- | --- | --- |
 | `cache` | `bmc` | `16` | 小几何 operational Cache wrapper 边界 safety |
-| `cache_full` | `bmc` | `160` | 128-index 初始化完成后的实际几何 safety |
+| `cache_full` | `bmc` | `160` | 深度 operational/data safety；小几何 `full` 和实际几何回归都会运行 |
 | `cover` | `cover` | `160` | I/D/AXI/backpressure/delay 可达性 |
 | `turnover` | `bmc` | `20` | 连续 DCache load 环境下的 response/request turnover safety |
 | `turnover_sanity` | `cover` | `20` | turnover 场景非空；当前 witness 在 step 18 |
 | `backpressure` | `bmc` | `24` | I/D hit/refill response stall 时 valid/payload 稳定并最终 handshake |
 | `backpressure_sanity` | `cover` | `24` | I/D hit/refill 四种 stall/recovery 场景非空 |
+| `data_sanity` | `cover` | `48` | partial store/load、dirty replacement、内部 writeback 到 AXI 和完整 line writeback 路径非空 |
 | `icache_invalid` | `bmc` | `360` | 空 ICache invalid 完成性 |
 | `dcache_clean` | `bmc` | `520` | 空 DCache clean 完成性 |
 | `dcache_invalid` | `bmc` | `520` | 空 DCache invalid 完成性 |

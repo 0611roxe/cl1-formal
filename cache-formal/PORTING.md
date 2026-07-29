@@ -19,7 +19,7 @@ generic/cache_valid_ready_monitor.sv
 - core/cache request-response contract。
 - AXI master 必要边界检查。
 - single-outstanding AXI 外存模型。
-- watched line load/store/refill/writeback 数据一致性检查。
+- I/D 独立 watched-line load/store/refill/writeback 数据一致性检查。
 - I/D/AXI/backpressure/response-delay cover。
 
 `cache_req_rsp_contract.sv` 将方向职责拆开：连接 DUT core-side 端口时通常设置
@@ -43,7 +43,12 @@ adapter 负责例化 DUT，并把 DUT 信号转换到 `cache_check.sv` 需要的
 
 - I-side：request valid/ready/address/cache，response valid/data/error。
 - D-side：request valid/ready/address/data/write enable/mask/cache/size，response valid/data/error。
-- AXI master：AW/W/B/AR/R 五通道必要字段。
+- AXI master：AW/W/B/AR/R 五通道必要字段；`ARPROT[2]` 必须可靠区分 instruction
+  和 data refill。
+
+watched line 是 `anyconst` 符号地址，不能在 adapter 中固定成某个测试地址。公共 checker
+也不要求命中或 refill 必然发生；功能性质以实际 handshake 为前提，路径非空由 cover
+单独检查。
 
 如果 DUT 的 core-side 协议不同，应在 adapter 中转换，不要把 DUT 私有协议写进
 `generic/`。

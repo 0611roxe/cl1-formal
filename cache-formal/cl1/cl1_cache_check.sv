@@ -56,6 +56,7 @@ module cl1_cache_check(input wire clock);
   wire [7:0]  ar_len;
   wire [2:0]  ar_size;
   wire [1:0]  ar_burst;
+  wire [2:0]  ar_prot;
 
   wire        r_valid;
   wire        r_ready;
@@ -145,6 +146,7 @@ module cl1_cache_check(input wire clock);
     .io_master_ar_bits_arlen     (ar_len),
     .io_master_ar_bits_arsize    (ar_size),
     .io_master_ar_bits_arburst   (ar_burst),
+    .io_master_ar_bits_arprot    (ar_prot),
 
     .io_master_r_ready           (r_ready),
     .io_master_r_valid           (r_valid),
@@ -227,6 +229,7 @@ module cl1_cache_check(input wire clock);
     .ar_len  (ar_len),
     .ar_size (ar_size),
     .ar_burst(ar_burst),
+    .ar_prot (ar_prot),
 
     .r_valid(r_valid),
     .r_ready(r_ready),
@@ -236,19 +239,43 @@ module cl1_cache_check(input wire clock);
     .r_id   (r_id)
   );
 
+  cache_valid_ready_monitor #(
+    .PAYLOAD_WIDTH(45),
+    .ASSUME_MODE(0),
+    .RESET_CLEARS_VALID(0)
+  ) dc_writeback_monitor (
+    .clock  (clock),
+    .reset  (reset),
+    .valid  (dc_writeback_valid),
+    .ready  (dc_writeback_ready),
+    .payload({dc_writeback_from_replace, dc_writeback_from_clean,
+              dc_writeback_addr, dc_writeback_mask, dc_writeback_len,
+              dc_writeback_size, dc_writeback_last})
+  );
+
   reg        dirty_replace_pending;
   reg [31:0] dirty_replace_addr;
   reg [1:0]  dirty_replace_wbeat;
+  reg        replace_axi_pending;
+  reg [31:0] replace_axi_addr;
   reg        seen_dirty_replace;
   reg        seen_dirty_replace_write;
+  reg        seen_dirty_replace_axi;
+
+  wire replace_first_fire = dc_writeback_fire &&
+                            dc_writeback_from_replace &&
+                            dirty_replace_wbeat == 2'h0;
 
   always @(posedge clock) begin
     if (reset) begin
       dirty_replace_pending <= 1'b0;
       dirty_replace_addr <= 32'h0;
       dirty_replace_wbeat <= 2'h0;
+      replace_axi_pending <= 1'b0;
+      replace_axi_addr <= 32'h0;
       seen_dirty_replace <= 1'b0;
       seen_dirty_replace_write <= 1'b0;
+      seen_dirty_replace_axi <= 1'b0;
     end else begin
       if (dc_dirty_replace_valid) begin
         dirty_replace_pending <= 1'b1;
@@ -265,6 +292,20 @@ module cl1_cache_check(input wire clock);
         end else begin
           dirty_replace_wbeat <= dirty_replace_wbeat + 2'h1;
         end
+      end
+
+      if (replace_first_fire) begin
+        replace_axi_pending <= 1'b1;
+        replace_axi_addr <= dc_writeback_addr;
+      end
+
+      if (aw_valid && aw_ready && (replace_axi_pending || replace_first_fire)) begin
+        assert (aw_addr == (replace_axi_pending ? replace_axi_addr : dc_writeback_addr));
+        assert (aw_len == 8'h3);
+        assert (aw_size == 3'h2);
+        assert (aw_burst == 2'b01);
+        replace_axi_pending <= 1'b0;
+        seen_dirty_replace_axi <= 1'b1;
       end
     end
   end
@@ -299,5 +340,15 @@ module cl1_cache_check(input wire clock);
       end
     end
   end
+
+`ifdef CACHE_FORMAL_DATA_SANITY
+  always @(posedge clock) begin
+    if (!reset) begin
+      cover (seen_dirty_replace);
+      cover (seen_dirty_replace_write);
+      cover (seen_dirty_replace_axi);
+    end
+  end
+`endif
 
 endmodule

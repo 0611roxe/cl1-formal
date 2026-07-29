@@ -17,9 +17,10 @@ CONTROL_TASKS := icache_invalid dcache_clean dcache_invalid icache_invalid_refet
 SANITY_TASKS := icache_invalid_sanity dcache_clean_sanity dcache_invalid_sanity icache_invalid_refetch_sanity dcache_invalid_refetch_sanity dcache_clean_writeback_sanity dcache_clean_twice_sanity
 TURNOVER_TASKS := turnover turnover_sanity
 BACKPRESSURE_TASKS := backpressure backpressure_sanity
+DATA_SANITY_TASKS := data_sanity
 FULL_GEOMETRY_TASKS := cache_full $(CONTROL_TASKS) $(SANITY_TASKS)
 QUICK_TASKS := cache cover
-FULL_TASKS := $(QUICK_TASKS) $(TURNOVER_TASKS) $(BACKPRESSURE_TASKS) $(CONTROL_TASKS) $(SANITY_TASKS)
+FULL_TASKS := $(QUICK_TASKS) cache_full $(TURNOVER_TASKS) $(BACKPRESSURE_TASKS) $(DATA_SANITY_TASKS) $(CONTROL_TASKS) $(SANITY_TASKS)
 
 define RUN_SBY
 @set +e; \
@@ -39,6 +40,9 @@ all: prove cover
 	$(MAKE) check-all
 
 full: prove turnover backpressure control sanity cover
+	mkdir -p $(SBY_DIR)
+	$(call RUN_SBY,$(SBY) -j $(JOBS) -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) cache_full,cache_full)
+	$(call RUN_SBY,$(SBY) -j $(JOBS) -f --prefix $(SBY_PREFIX) $(SBY_CONFIG) $(DATA_SANITY_TASKS),$(DATA_SANITY_TASKS))
 	$(MAKE) check-full
 
 full-geometry:

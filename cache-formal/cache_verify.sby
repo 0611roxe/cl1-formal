@@ -6,6 +6,7 @@ turnover
 turnover_sanity
 backpressure
 backpressure_sanity
+data_sanity
 icache_invalid
 dcache_clean
 dcache_invalid
@@ -29,6 +30,7 @@ turnover: mode bmc
 turnover_sanity: mode cover
 backpressure: mode bmc
 backpressure_sanity: mode cover
+data_sanity: mode cover
 icache_invalid: mode bmc
 dcache_clean: mode bmc
 dcache_invalid: mode bmc
@@ -51,6 +53,7 @@ turnover: depth 20
 turnover_sanity: depth 20
 backpressure: depth 24
 backpressure_sanity: depth 24
+data_sanity: depth 48
 icache_invalid: depth 360
 dcache_clean: depth 520
 dcache_invalid: depth 520
@@ -78,6 +81,7 @@ turnover: read_verilog -formal -sv -DCACHE_FORMAL_TURNOVER cache_verify.sv
 turnover_sanity: read_verilog -formal -sv -DCACHE_FORMAL_TURNOVER -DCACHE_FORMAL_COVER cache_verify.sv
 backpressure: read_verilog -formal -sv -DCACHE_FORMAL_BACKPRESSURE cache_verify.sv
 backpressure_sanity: read_verilog -formal -sv -DCACHE_FORMAL_BACKPRESSURE -DCACHE_FORMAL_COVER cache_verify.sv
+data_sanity: read_verilog -formal -sv -DCACHE_FORMAL_DATA_SANITY -DCACHE_FORMAL_COVER cache_verify.sv
 icache_invalid: read_verilog -formal -sv cache_verify.sv
 dcache_clean: read_verilog -formal -sv cache_verify.sv
 dcache_invalid: read_verilog -formal -sv cache_verify.sv
@@ -99,6 +103,7 @@ turnover: prep -top cl1_cache_check
 turnover_sanity: prep -top cl1_cache_check
 backpressure: prep -top cl1_cache_check
 backpressure_sanity: prep -top cl1_cache_check
+data_sanity: prep -top cl1_cache_check
 icache_invalid: chparam -set SPEC 0 cl1_cache_control_ready_check
 icache_invalid: prep -top cl1_cache_control_ready_check
 dcache_clean: chparam -set SPEC 1 cl1_cache_control_ready_check

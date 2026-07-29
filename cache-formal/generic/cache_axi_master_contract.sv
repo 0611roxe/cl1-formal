@@ -37,6 +37,7 @@ module cache_axi_master_contract #(
   input wire [LEN_WIDTH-1:0]  ar_len,
   input wire [2:0]            ar_size,
   input wire [1:0]            ar_burst,
+  input wire [2:0]            ar_prot,
 
   input wire                  r_valid,
   input wire                  r_ready,
@@ -74,7 +75,7 @@ module cache_axi_master_contract #(
   );
 
   cache_valid_ready_monitor #(
-    .PAYLOAD_WIDTH(ADDR_WIDTH + ID_WIDTH + LEN_WIDTH + 5),
+    .PAYLOAD_WIDTH(ADDR_WIDTH + ID_WIDTH + LEN_WIDTH + 8),
     .ASSUME_MODE(0),
     .RESET_CLEARS_VALID(0)
   ) ar_monitor (
@@ -82,7 +83,7 @@ module cache_axi_master_contract #(
     .reset  (reset),
     .valid  (ar_valid),
     .ready  (ar_ready),
-    .payload({ar_addr, ar_id, ar_len, ar_size, ar_burst})
+    .payload({ar_addr, ar_id, ar_len, ar_size, ar_burst, ar_prot})
   );
 
   reg wr_active;
